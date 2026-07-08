@@ -1,17 +1,17 @@
-Here is your complete, consolidated **NourishLink Master Blueprint** formatted as a Markdown (`.md`) file.
+Here is your completely updated, consolidated **NourishLink Master Blueprint** formatted as a clean Markdown (`.md`) file.
 
-You can copy the text below, save it locally as `nourishlink_blueprint.md`, and use it to instantly refresh my memory in any new chat session.
+This version integrates the expanded multi-table database capabilities for the Postgres Tool node description and updates the AI Agent system prompt with the delivery completion rule to fulfill the digital receipt logic securely.
 
 ---
 
 ```markdown
 # NourishLink Master Blueprint
-**Project Focus:** Autonomous B2B Food Rescue Logistics (UN SDG Goal 2: Zero Hunger)
+**Project Focus:** Autonomous B2B Food Rescue Logistics (UN SDG Goal 2: Zero Hunger)[cite: 1, 2]
 **Target Roles:** 
-*   Tay: Backend, Database, Ingestion APIs, n8n Orchestration
-*   Jeky: Web Dashboard Frontend & Visual Branding
-*   Denas: Explainer Video & Presentation Lead
-*   Denna: Mobile Responsive Map App Layout & Social Marketing
+*   Tay: Backend, Database, Ingestion APIs, n8n Orchestration[cite: 1, 2]
+*   Jeky: Web Dashboard Frontend & Visual Branding[cite: 1, 2]
+*   Denas: Explainer Video & Presentation Lead[cite: 1, 2]
+*   Denna: Mobile Responsive Map App Layout & Social Marketing[cite: 1, 2]
 
 ---
 
@@ -67,12 +67,17 @@ CREATE TABLE rescue_pickups (
 Acts as the B2B entry gateway catching static inventory logs pushed from Jeky's web dashboard.
 
 * **Node 1: Webhook Trigger (POST Method)**
+
 * *Path:* `add-surplus`
+
 * *Payload Expected:* `{"restaurant_id": 1, "item_name": "Curry Chicken", "units_produced": 50, "units_sold": 40, "surplus_quantity": 10}`
 
 
+
 * **Node 2: Postgres Node (Insert Action)**
+
 * *Target Table:* `daily_inventory`
+
 * *Conflict Mapping:* None (forces chronological historical logging instead of an update override)
 
 
@@ -97,12 +102,12 @@ The fully concurrency-proofed, localized neural map handling real-time driver di
 
 ```
 
-### Phase A: RBAC Security Gate Configuration
+### Phase A: RBAC Security Gate & Tool Configuration
 
 1. **Verify Driver (Postgres Node):**
 * *Operation:* `Execute a SQL query`
 
-* *Query:* `SELECT volunteer_id, volunteer_name FROM volunteers WHERE telegram_chat_id = '{{ $('Telegram Trigger').item.json.message.from.id }}';`
+* *Query:* `SELECT volunteer_id, volunteer_name FROM volunteers WHERE telegram_chat_id = '{{ $json.message.from.id }}';`
 
 * *Settings:* **Always Output Data** toggled `ON` (forces blank JSON object pass-through on unauthorized match).
 
@@ -120,6 +125,22 @@ The fully concurrency-proofed, localized neural map handling real-time driver di
 
 
 
+3. **Postgres Tool Description Configuration:**
+* *Tool Description text box:* Maps structural database capabilities natively to the AI engine.
+
+
+
+
+```text
+Execute SQL queries on the PostgreSQL database to manage food rescue logistics. 
+
+Supported Tables & Capabilities:
+1. daily_inventory (Columns: inventory_id, restaurant_id, item_name, units_produced, units_sold, surplus_quantity, safe_consume_by, status). Use this to SELECT available surplus or UPDATE status to 'Claimed'.
+2. rescue_pickups (Columns: pickup_id, inventory_id, volunteer_id, pickup_status, assigned_at, completed_at). Use this to UPDATE pickup_status to 'Completed' and stamp completed_at to log concrete proof of delivery when a driver confirms a successful drop-off.
+
+```
+
+
 
 ### Phase B: Finalized AI Agent System Message (Prompt)
 
@@ -134,9 +155,9 @@ Follow these strict operational rules:
    SELECT inventory_id, item_name, surplus_quantity, safe_consume_by FROM daily_inventory WHERE status = 'Available' AND (safe_consume_by > CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore' OR safe_consume_by IS NULL);
 
 2. Present the returned options inside a clean vertical list format using clear emojis. DO NOT generate Markdown or HTML horizontal tables. Format exactly like this:
-   📦 ID: [inventory_id] | [item_name]
-   • 🍽️ Quantity: [surplus_quantity] units
-   • ⏳ Consume By: [safe_consume_by formatted as YYYY-MM-DD HH:MM]
+   🍩 ID: [inventory_id] | [item_name]
+   • Quantity: [surplus_quantity] units
+   • Consume By: [safe_consume_by formatted as YYYY-MM-DD HH:MM]
 
 3. Ask the driver to type the specific numeric ID they wish to claim.
 
@@ -155,7 +176,13 @@ Follow these strict operational rules:
    - If rows were altered successfully, enthusiastically confirm the dispatch route and remind them to deliver before the Safe Consume By time.
    - If the query returns empty, a concurrency conflict occurred. Politely apologize and explain that another volunteer driver claimed that exact food batch milliseconds prior.
 
-6. CRITICAL formatting constraint: Never output bold text with asterisks (**), italics, or underscores (_). Deliver answers using plain text, spacing, and emojis only.
+6. When a driver confirms they have delivered the food, use your Postgres tool to run this exact query to trigger the digital receipt logic:
+   UPDATE rescue_pickups 
+   SET pickup_status = 'Completed', completed_at = CURRENT_TIMESTAMP 
+   WHERE volunteer_id = {{ $json.volunteer_id }} AND pickup_status = 'Dispatched';
+   - Once executed, thank the driver for their contribution and confirm the delivery has been logged.
+
+7. CRITICAL formatting constraint: Never output bold text with asterisks (**), italics, or underscores (_). Deliver answers using plain text, spacing, and emojis only.
 
 ```
 
