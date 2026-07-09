@@ -20,6 +20,7 @@ import {
   Truck,
   Utensils,
 } from "lucide-react";
+import { isSupabaseConfigured, supabase } from "./lib/supabase.ts";
 
 type InventoryStatus = "Available" | "Claimed";
 type PickupStatus = "Dispatched" | "Completed";
@@ -46,7 +47,7 @@ interface DailyInventory {
 interface Volunteer {
   volunteer_id: number;
   volunteer_name: string;
-  telegram_chat_id: string;
+  telegram_chat_id?: string;
 }
 
 interface RescuePickup {
@@ -98,7 +99,7 @@ const fallbackCoordinates: Record<number, { lat: number; lng: number }> = {
   3: { lat: 1.3499, lng: 103.8738 },
 };
 
-const restaurants: Restaurant[] = [
+const demoRestaurants: Restaurant[] = [
   {
     restaurant_id: 1,
     business_name: "Tiong Bahru Curry House",
@@ -188,7 +189,10 @@ const formatDateTime = (value: string) =>
   }).format(new Date(value));
 
 const getRestaurant = (restaurantId: number) =>
-  restaurants.find((restaurant) => restaurant.restaurant_id === restaurantId) ?? restaurants[0];
+  demoRestaurants.find((restaurant) => restaurant.restaurant_id === restaurantId) ?? demoRestaurants[0];
+
+const findRestaurant = (restaurantList: Restaurant[], restaurantId: number) =>
+  restaurantList.find((restaurant) => restaurant.restaurant_id === restaurantId) ?? demoRestaurants[0];
 
 type ChatMessage = {
   id: number;
@@ -237,11 +241,16 @@ const extractChatbotAnswer = async (response: Response) => {
 };
 
 export default function App() {
+  const [restaurantRecords, setRestaurantRecords] = useState<Restaurant[]>(demoRestaurants);
+  const [volunteerRecords, setVolunteerRecords] = useState<Volunteer[]>(volunteers);
   const [inventory, setInventory] = useState<DailyInventory[]>(initialInventory);
   const [pickups, setPickups] = useState<RescuePickup[]>(initialPickups);
   const [activeVolunteerId, setActiveVolunteerId] = useState(2);
   const [submitState, setSubmitState] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [submitMessage, setSubmitMessage] = useState("");
+  const [databaseMessage, setDatabaseMessage] = useState(
+    isSupabaseConfigured ? "Connecting to Supabase..." : "Demo mode active. Add Supabase env variables to sync live data."
+  );
   const [surplusSearch, setSurplusSearch] = useState("");
   const [formData, setFormData] = useState({
     restaurant_id: "1",
@@ -256,7 +265,7 @@ export default function App() {
   const filteredAvailableInventory = availableInventory.filter((item) => {
     if (!normalizedSurplusSearch) return true;
 
-    const restaurant = getRestaurant(item.restaurant_id);
+    const restaurant = findRestaurant(restaurantRecords, item.restaurant_id);
     const searchableText = [
       item.inventory_id,
       item.item_name,
@@ -276,7 +285,87 @@ export default function App() {
 
     return searchableText.includes(normalizedSurplusSearch);
   });
-  const activeVolunteer = volunteers.find((volunteer) => volunteer.volunteer_id === activeVolunteerId) ?? volunteers[0];
+  const activeVolunteer =
+    volunteerRecords.find((volunteer) => volunteer.volunteer_id === activeVolunteerId) ?? volunteerRecords[0] ?? volunteers[0];
+
+  useEffect(() => {
+    if (!supabase) return;
+
+    let cancelled = false;
+
+    const loadSupabaseData = async () => {
+      setDatabaseMessage("Loading live data from Supabase...");
+
+      const [restaurantsResult, volunteersResult, inventoryResult, pickupsResult] = await Promise.all([
+        supabase.from("restaurants").select("*").order("restaurant_id", { ascending: true }),
+        supabase.from("volunteers").select("volunteer_id, volunteer_name").order("volunteer_id", { ascending: true }),
+        supabase.from("daily_inventory").select("*").order("inventory_id", { ascending: false }),
+        supabase.from("rescue_pickups").select("*").order("pickup_id", { ascending: false }),
+      ]);
+
+      if (cancelled) return;
+
+      if (restaurantsResult.error || volunteersResult.error || inventoryResult.error || pickupsResult.error) {
+        const message =
+          restaurantsResult.error?.message ??
+          volunteersResult.error?.message ??
+          inventoryResult.error?.message ??
+          pickupsResult.error?.message;
+        setDatabaseMessage(`Supabase read failed: ${message}. Demo data remains visible.`);
+        return;
+      }
+
+      const loadedRestaurants = (restaurantsResult.data ?? []) as Restaurant[];
+      const loadedVolunteers = (volunteersResult.data ?? []) as Volunteer[];
+      setRestaurantRecords(loadedRestaurants.length ? loadedRestaurants : demoRestaurants);
+      setVolunteerRecords(loadedVolunteers.length ? loadedVolunteers : volunteers);
+      setInventory((inventoryResult.data ?? []) as DailyInventory[]);
+      setPickups((pickupsResult.data ?? []) as RescuePickup[]);
+      setDatabaseMessage("Supabase connected. Data is loaded and listening for realtime changes.");
+    };
+
+    void loadSupabaseData();
+
+    const channel = supabase
+      .channel("nourishlink-frontend-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "restaurants" }, () => {
+        void loadSupabaseData();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "daily_inventory" }, () => {
+        void loadSupabaseData();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "volunteers" }, () => {
+        void loadSupabaseData();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "rescue_pickups" }, () => {
+        void loadSupabaseData();
+      })
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          setDatabaseMessage("Supabase connected. Realtime sync is active.");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      void supabase.removeChannel(channel);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!restaurantRecords.some((restaurant) => String(restaurant.restaurant_id) === formData.restaurant_id)) {
+      setFormData((current) => ({
+        ...current,
+        restaurant_id: String(restaurantRecords[0]?.restaurant_id ?? 1),
+      }));
+    }
+  }, [formData.restaurant_id, restaurantRecords]);
+
+  useEffect(() => {
+    if (!volunteerRecords.some((volunteer) => volunteer.volunteer_id === activeVolunteerId)) {
+      setActiveVolunteerId(volunteerRecords[0]?.volunteer_id ?? 1);
+    }
+  }, [activeVolunteerId, volunteerRecords]);
 
   const impact = useMemo(() => {
     const rescuedUnits = inventory
@@ -314,10 +403,30 @@ export default function App() {
     }
 
     setSubmitState("sending");
-    setSubmitMessage(WEBHOOK_URL ? "Sending surplus record to n8n..." : "Webhook not configured, saving to local demo state.");
+    setSubmitMessage(
+      supabase
+        ? "Saving surplus record to Supabase..."
+        : WEBHOOK_URL
+          ? "Sending surplus record to n8n..."
+          : "Webhook not configured, saving to local demo state."
+    );
 
     try {
-      if (WEBHOOK_URL) {
+      if (supabase) {
+        const { data, error } = await supabase
+          .from("daily_inventory")
+          .insert({ ...payload, status: "Available" })
+          .select("*")
+          .single();
+
+        if (error) {
+          throw error;
+        }
+
+        if (data) {
+          setInventory((current) => [data as DailyInventory, ...current]);
+        }
+      } else if (WEBHOOK_URL) {
         const response = await fetch(WEBHOOK_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -329,17 +438,22 @@ export default function App() {
         }
       }
 
-      const newItem: DailyInventory = {
-        inventory_id: Math.max(...inventory.map((item) => item.inventory_id), 100) + 1,
-        ...payload,
-        status: "Available",
-      };
+      if (!supabase) {
+        const newItem: DailyInventory = {
+          inventory_id: Math.max(...inventory.map((item) => item.inventory_id), 100) + 1,
+          ...payload,
+          status: "Available",
+        };
 
-      setInventory((current) => [newItem, ...current]);
+        setInventory((current) => [newItem, ...current]);
+      }
+
       setFormData((current) => ({ ...current, item_name: "", units_produced: "50", units_sold: "40" }));
       setSubmitState("success");
       setSubmitMessage(
-        WEBHOOK_URL
+        supabase
+          ? "Surplus saved to Supabase. Realtime listeners will keep the dashboard synced."
+          : WEBHOOK_URL
           ? "Surplus submitted to n8n and mirrored in the demo dashboard."
           : "Saved locally. Add VITE_N8N_ADD_SURPLUS_WEBHOOK to send this to your live workflow."
       );
@@ -349,8 +463,51 @@ export default function App() {
     }
   };
 
-  const claimInventory = (inventoryId: number) => {
+  const claimInventory = async (inventoryId: number) => {
     const nextPickupId = Math.max(...pickups.map((pickup) => pickup.pickup_id), 500) + 1;
+
+    if (supabase) {
+      const { data: updatedRows, error: inventoryError } = await supabase
+        .from("daily_inventory")
+        .update({ status: "Claimed" })
+        .eq("inventory_id", inventoryId)
+        .eq("status", "Available")
+        .select("*");
+
+      if (inventoryError) {
+        setDatabaseMessage(`Claim failed: ${inventoryError.message}`);
+        return;
+      }
+
+      if (!updatedRows?.length) {
+        setDatabaseMessage("Claim failed: this food batch may already be claimed.");
+        return;
+      }
+
+      const { data: pickupData, error: pickupError } = await supabase
+        .from("rescue_pickups")
+        .insert({
+          inventory_id: inventoryId,
+          volunteer_id: activeVolunteerId,
+          pickup_status: "Dispatched",
+        })
+        .select("*")
+        .single();
+
+      if (pickupError) {
+        setDatabaseMessage(`Pickup creation failed: ${pickupError.message}`);
+        return;
+      }
+
+      setInventory((current) =>
+        current.map((item) => (item.inventory_id === inventoryId ? (updatedRows[0] as DailyInventory) : item))
+      );
+      if (pickupData) {
+        setPickups((current) => [pickupData as RescuePickup, ...current]);
+      }
+      setDatabaseMessage("Pickup claimed in Supabase. Realtime sync is active.");
+      return;
+    }
 
     setInventory((current) =>
       current.map((item) => (item.inventory_id === inventoryId ? { ...item, status: "Claimed" } : item))
@@ -367,7 +524,27 @@ export default function App() {
     ]);
   };
 
-  const completePickup = (pickupId: number) => {
+  const completePickup = async (pickupId: number) => {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from("rescue_pickups")
+        .update({ pickup_status: "Completed", completed_at: new Date().toISOString() })
+        .eq("pickup_id", pickupId)
+        .select("*")
+        .single();
+
+      if (error) {
+        setDatabaseMessage(`Completion failed: ${error.message}`);
+        return;
+      }
+
+      setPickups((current) =>
+        current.map((pickup) => (pickup.pickup_id === pickupId ? (data as RescuePickup) : pickup))
+      );
+      setDatabaseMessage("Pickup completed in Supabase. Digital receipt timestamp is logged.");
+      return;
+    }
+
     setPickups((current) =>
       current.map((pickup) =>
         pickup.pickup_id === pickupId
@@ -418,6 +595,9 @@ export default function App() {
               <MetricCard label="Units claimed" value={impact.rescuedUnits.toString()} tone="green" />
               <MetricCard label="Receipts locked" value={impact.completedPickups.toString()} tone="white" />
             </div>
+            <p className="mt-5 max-w-3xl rounded-lg border border-white/15 bg-white/8 px-4 py-3 text-sm text-white/65">
+              {databaseMessage}
+            </p>
           </div>
 
           <div className="overflow-hidden rounded-lg border border-white/15 bg-white/8">
@@ -440,6 +620,7 @@ export default function App() {
           formData={formData}
           submitState={submitState}
           submitMessage={submitMessage}
+          restaurants={restaurantRecords}
           onChange={handleInputChange}
           onSubmit={handleSurplusSubmit}
         />
@@ -477,7 +658,12 @@ export default function App() {
           </div>
           <div className="grid max-h-[790px] gap-4 overflow-y-auto pr-2 [scrollbar-gutter:stable]">
             {filteredAvailableInventory.map((item) => (
-              <InventoryCard key={item.inventory_id} item={item} onClaim={claimInventory} />
+              <InventoryCard
+                key={item.inventory_id}
+                item={item}
+                restaurants={restaurantRecords}
+                onClaim={claimInventory}
+              />
             ))}
             {availableInventory.length === 0 && (
               <EmptyState title="No available surplus right now" detail="New restaurant submissions will appear here." />
@@ -491,7 +677,7 @@ export default function App() {
 
       <section id="map" className="border-y border-black/10 bg-white">
         <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
-          <MapPanel googleMapsConfigured={Boolean(GOOGLE_MAPS_KEY)} inventory={inventory} />
+          <MapPanel googleMapsConfigured={Boolean(GOOGLE_MAPS_KEY)} inventory={inventory} restaurants={restaurantRecords} />
 
           <div className="space-y-4">
             <SectionHeader
@@ -501,7 +687,7 @@ export default function App() {
               detail={`Signed in as ${activeVolunteer.volunteer_name}. RBAC still lives in n8n using telegram_chat_id.`}
             />
             <div className="flex gap-2 rounded-lg border border-black/10 bg-[#f6f7f2] p-2">
-              {volunteers.map((volunteer) => (
+              {volunteerRecords.map((volunteer) => (
                 <button
                   key={volunteer.volunteer_id}
                   onClick={() => setActiveVolunteerId(volunteer.volunteer_id)}
@@ -519,7 +705,13 @@ export default function App() {
               {pickups
                 .filter((pickup) => pickup.volunteer_id === activeVolunteerId)
                 .map((pickup) => (
-                  <PickupCard key={pickup.pickup_id} pickup={pickup} inventory={inventory} onComplete={completePickup} />
+                  <PickupCard
+                    key={pickup.pickup_id}
+                    pickup={pickup}
+                    inventory={inventory}
+                    restaurants={restaurantRecords}
+                    onComplete={completePickup}
+                  />
                 ))}
               {pickups.filter((pickup) => pickup.volunteer_id === activeVolunteerId).length === 0 && (
                 <EmptyState title="No pickups assigned" detail="Claim an available batch to create a rescue_pickups row." />
@@ -619,6 +811,7 @@ function RestaurantSurplusForm({
   formData,
   submitState,
   submitMessage,
+  restaurants,
   onChange,
   onSubmit,
 }: {
@@ -631,6 +824,7 @@ function RestaurantSurplusForm({
   };
   submitState: "idle" | "sending" | "success" | "error";
   submitMessage: string;
+  restaurants: Restaurant[];
   onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   onSubmit: (event: React.FormEvent) => void;
 }) {
@@ -741,8 +935,16 @@ function RestaurantSurplusForm({
   );
 }
 
-function InventoryCard({ item, onClaim }: { item: DailyInventory; onClaim: (inventoryId: number) => void }) {
-  const restaurant = getRestaurant(item.restaurant_id);
+function InventoryCard({
+  item,
+  restaurants,
+  onClaim,
+}: {
+  item: DailyInventory;
+  restaurants: Restaurant[];
+  onClaim: (inventoryId: number) => void;
+}) {
+  const restaurant = findRestaurant(restaurants, item.restaurant_id);
   const routeUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
     `${restaurant.address} ${restaurant.postal_code}`
   )}`;
@@ -796,9 +998,11 @@ function InventoryCard({ item, onClaim }: { item: DailyInventory; onClaim: (inve
 function MapPanel({
   googleMapsConfigured,
   inventory,
+  restaurants,
 }: {
   googleMapsConfigured: boolean;
   inventory: DailyInventory[];
+  restaurants: Restaurant[];
 }) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const [mapStatus, setMapStatus] = useState<"idle" | "loading" | "ready" | "error">(
@@ -838,8 +1042,11 @@ function MapPanel({
         const infoWindow = new window.google.maps.InfoWindow();
         const geocoder = new window.google.maps.Geocoder();
 
-        restaurants.forEach((restaurant) => {
-          const fallbackPosition = fallbackCoordinates[restaurant.restaurant_id];
+        restaurants.forEach((restaurant, index) => {
+          const fallbackPosition = fallbackCoordinates[restaurant.restaurant_id] ?? {
+            lat: 1.3038 + index * 0.012,
+            lng: 103.8318 + index * 0.014,
+          };
           const marker = new window.google.maps.Marker({
             map,
             position: fallbackPosition,
@@ -971,14 +1178,16 @@ function MapPanel({
 function PickupCard({
   pickup,
   inventory,
+  restaurants,
   onComplete,
 }: {
   pickup: RescuePickup;
   inventory: DailyInventory[];
+  restaurants: Restaurant[];
   onComplete: (pickupId: number) => void;
 }) {
   const item = inventory.find((inventoryItem) => inventoryItem.inventory_id === pickup.inventory_id);
-  const restaurant = item ? getRestaurant(item.restaurant_id) : restaurants[0];
+  const restaurant = item ? findRestaurant(restaurants, item.restaurant_id) : restaurants[0] ?? demoRestaurants[0];
   const isCompleted = pickup.pickup_status === "Completed";
 
   return (
