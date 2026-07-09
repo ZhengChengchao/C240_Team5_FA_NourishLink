@@ -1510,10 +1510,10 @@ function MobileAppPrototype({
   };
 
   return (
-        <div className="mx-auto w-full max-w-[390px] self-start rounded-[1.75rem] border border-black/15 bg-[#111c17] p-3 shadow-2xl sm:rounded-[2rem]">
-          <div className="rounded-[1.35rem] bg-[#f6f7f2] p-4 text-[#17211c] sm:rounded-[1.55rem]">
-            <div className="mx-auto mb-3 h-1.5 w-20 rounded-full bg-black/20" />
-            <div className="mb-3 flex items-center justify-between">
+        <div className="mx-auto aspect-[9/19.5] w-full max-w-[430px] self-start rounded-[2.1rem] border border-black/15 bg-[#111c17] p-3 shadow-2xl">
+          <div className="flex h-full flex-col overflow-hidden rounded-[1.65rem] bg-[#f6f7f2] p-4 text-[#17211c]">
+            <div className="mx-auto mb-3 h-1.5 w-20 shrink-0 rounded-full bg-black/20" />
+            <div className="mb-3 flex shrink-0 items-center justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-[#2f6f46]">NourishLink App</p>
                 <h3 className="font-display text-2xl font-bold">{isSignedIn ? `Hi, ${demoName}` : "Welcome"}</h3>
@@ -1522,7 +1522,7 @@ function MobileAppPrototype({
             </div>
 
             {!isSignedIn ? (
-              <form onSubmit={handleDemoAuth} className="space-y-3">
+              <form onSubmit={handleDemoAuth} className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1 [scrollbar-gutter:stable]">
                 <div className="grid grid-cols-2 gap-2 rounded-lg bg-white p-2">
                   <button
                     type="button"
@@ -1597,7 +1597,7 @@ function MobileAppPrototype({
               </form>
             ) : (
               <>
-                <div className="mb-4 rounded-lg bg-white p-3">
+                <div className="mb-4 shrink-0 rounded-lg bg-white p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-widest text-black/40">{demoEmail}</p>
@@ -1615,7 +1615,7 @@ function MobileAppPrototype({
                   </div>
                 </div>
 
-            <div className="mt-3 max-h-[620px] overflow-y-auto pr-1 [scrollbar-gutter:stable]">
+            <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-gutter:stable]">
               {mobileRole === "restaurant" && (
                 <form onSubmit={onSubmitSurplus} className="space-y-3">
                   <div className="rounded-lg bg-white p-4">
