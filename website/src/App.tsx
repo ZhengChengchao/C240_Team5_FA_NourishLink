@@ -47,7 +47,17 @@ interface DailyInventory {
 interface Volunteer {
   volunteer_id: number;
   volunteer_name: string;
+  organization_id?: number | null;
   telegram_chat_id?: string;
+}
+
+interface PartnerOrganization {
+  organization_id: number;
+  organization_name: string;
+  organization_type?: string | null;
+  contact_email?: string | null;
+  service_area?: string | null;
+  verified_status?: string | null;
 }
 
 interface RescuePickup {
@@ -127,12 +137,33 @@ const volunteers: Volunteer[] = [
   {
     volunteer_id: 1,
     volunteer_name: "Aisha Rahman",
+    organization_id: 1,
     telegram_chat_id: "87210451",
   },
   {
     volunteer_id: 2,
     volunteer_name: "Jeky Tan",
+    organization_id: 2,
     telegram_chat_id: "91827433",
+  },
+];
+
+const demoPartnerOrganizations: PartnerOrganization[] = [
+  {
+    organization_id: 1,
+    organization_name: "Food from the Heart",
+    organization_type: "Food Charity",
+    contact_email: "ops@foodheart.example",
+    service_area: "Central Singapore",
+    verified_status: "Verified",
+  },
+  {
+    organization_id: 2,
+    organization_name: "NourishLink Volunteer Network",
+    organization_type: "Community Partner",
+    contact_email: "volunteers@nourishlink.example",
+    service_area: "Islandwide",
+    verified_status: "Verified",
   },
 ];
 
@@ -194,6 +225,11 @@ const getRestaurant = (restaurantId: number) =>
 const findRestaurant = (restaurantList: Restaurant[], restaurantId: number) =>
   restaurantList.find((restaurant) => restaurant.restaurant_id === restaurantId) ?? demoRestaurants[0];
 
+const findPartnerOrganization = (
+  organizations: PartnerOrganization[],
+  organizationId?: number | null
+) => organizations.find((organization) => organization.organization_id === organizationId);
+
 type ChatMessage = {
   id: number;
   role: "assistant" | "user";
@@ -242,6 +278,7 @@ const extractChatbotAnswer = async (response: Response) => {
 
 export default function App() {
   const [restaurantRecords, setRestaurantRecords] = useState<Restaurant[]>(demoRestaurants);
+  const [partnerOrganizations, setPartnerOrganizations] = useState<PartnerOrganization[]>(demoPartnerOrganizations);
   const [volunteerRecords, setVolunteerRecords] = useState<Volunteer[]>(volunteers);
   const [inventory, setInventory] = useState<DailyInventory[]>(initialInventory);
   const [pickups, setPickups] = useState<RescuePickup[]>(initialPickups);
@@ -287,6 +324,7 @@ export default function App() {
   });
   const activeVolunteer =
     volunteerRecords.find((volunteer) => volunteer.volunteer_id === activeVolunteerId) ?? volunteerRecords[0] ?? volunteers[0];
+  const activePartnerOrganization = findPartnerOrganization(partnerOrganizations, activeVolunteer.organization_id);
 
   useEffect(() => {
     if (!supabase) return;
@@ -296,18 +334,20 @@ export default function App() {
     const loadSupabaseData = async () => {
       setDatabaseMessage("Loading live data from Supabase...");
 
-      const [restaurantsResult, volunteersResult, inventoryResult, pickupsResult] = await Promise.all([
+      const [restaurantsResult, partnersResult, volunteersResult, inventoryResult, pickupsResult] = await Promise.all([
         supabase.from("restaurants").select("*").order("restaurant_id", { ascending: true }),
-        supabase.from("volunteers").select("volunteer_id, volunteer_name").order("volunteer_id", { ascending: true }),
+        supabase.from("partner_organizations").select("*").order("organization_id", { ascending: true }),
+        supabase.from("volunteers").select("volunteer_id, volunteer_name, organization_id").order("volunteer_id", { ascending: true }),
         supabase.from("daily_inventory").select("*").order("inventory_id", { ascending: false }),
         supabase.from("rescue_pickups").select("*").order("pickup_id", { ascending: false }),
       ]);
 
       if (cancelled) return;
 
-      if (restaurantsResult.error || volunteersResult.error || inventoryResult.error || pickupsResult.error) {
+      if (restaurantsResult.error || partnersResult.error || volunteersResult.error || inventoryResult.error || pickupsResult.error) {
         const message =
           restaurantsResult.error?.message ??
+          partnersResult.error?.message ??
           volunteersResult.error?.message ??
           inventoryResult.error?.message ??
           pickupsResult.error?.message;
@@ -316,8 +356,10 @@ export default function App() {
       }
 
       const loadedRestaurants = (restaurantsResult.data ?? []) as Restaurant[];
+      const loadedPartners = (partnersResult.data ?? []) as PartnerOrganization[];
       const loadedVolunteers = (volunteersResult.data ?? []) as Volunteer[];
       setRestaurantRecords(loadedRestaurants.length ? loadedRestaurants : demoRestaurants);
+      setPartnerOrganizations(loadedPartners.length ? loadedPartners : demoPartnerOrganizations);
       setVolunteerRecords(loadedVolunteers.length ? loadedVolunteers : volunteers);
       setInventory((inventoryResult.data ?? []) as DailyInventory[]);
       setPickups((pickupsResult.data ?? []) as RescuePickup[]);
@@ -329,6 +371,9 @@ export default function App() {
     const channel = supabase
       .channel("nourishlink-frontend-sync")
       .on("postgres_changes", { event: "*", schema: "public", table: "restaurants" }, () => {
+        void loadSupabaseData();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "partner_organizations" }, () => {
         void loadSupabaseData();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "daily_inventory" }, () => {
@@ -373,9 +418,10 @@ export default function App() {
       .reduce((total, item) => total + item.surplus_quantity, 0);
     const completedPickups = pickups.filter((pickup) => pickup.pickup_status === "Completed").length;
     const availableUnits = availableInventory.reduce((total, item) => total + item.surplus_quantity, 0);
+    const partnerCount = partnerOrganizations.length;
 
-    return { rescuedUnits, completedPickups, availableUnits };
-  }, [availableInventory, inventory, pickups]);
+    return { rescuedUnits, completedPickups, availableUnits, partnerCount };
+  }, [availableInventory, inventory, partnerOrganizations.length, pickups]);
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData((current) => ({ ...current, [event.target.name]: event.target.value }));
@@ -590,10 +636,11 @@ export default function App() {
               Restaurants submit end-of-day inventory, the AI dispatcher checks safe consumption windows, and registered
               volunteers claim nearby pickups through a map-first workflow.
             </p>
-            <div className="mt-8 grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="mt-8 grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-4">
               <MetricCard label="Available units" value={impact.availableUnits.toString()} tone="gold" />
               <MetricCard label="Units claimed" value={impact.rescuedUnits.toString()} tone="green" />
               <MetricCard label="Receipts locked" value={impact.completedPickups.toString()} tone="white" />
+              <MetricCard label="Partner orgs" value={impact.partnerCount.toString()} tone="blue" />
             </div>
             <p className="mt-5 max-w-3xl rounded-lg border border-white/15 bg-white/8 px-4 py-3 text-sm text-white/65">
               {databaseMessage}
@@ -608,7 +655,8 @@ export default function App() {
             <div className="grid grid-cols-2 gap-px bg-white/10 text-sm">
               <SchemaTile icon={Building2} title="restaurants" detail="business_name, address, postal_code" />
               <SchemaTile icon={Database} title="daily_inventory" detail="surplus_quantity, safe_consume_by, status" />
-              <SchemaTile icon={Truck} title="volunteers" detail="telegram_chat_id RBAC gate" />
+              <SchemaTile icon={ShieldCheck} title="partner_organizations" detail="verified charity partners and service areas" />
+              <SchemaTile icon={Truck} title="volunteers" detail="telegram_chat_id RBAC gate + organization_id" />
               <SchemaTile icon={FileCheck2} title="rescue_pickups" detail="Dispatched to Completed receipt trail" />
             </div>
           </div>
@@ -684,7 +732,7 @@ export default function App() {
               icon={Route}
               eyebrow="Driver state"
               title="Claimed pickups and receipts"
-              detail={`Signed in as ${activeVolunteer.volunteer_name}. RBAC still lives in n8n using telegram_chat_id.`}
+              detail={`Signed in as ${activeVolunteer.volunteer_name}${activePartnerOrganization ? ` from ${activePartnerOrganization.organization_name}` : ""}. RBAC still lives in n8n using telegram_chat_id.`}
             />
             <div className="flex gap-2 rounded-lg border border-black/10 bg-[#f6f7f2] p-2">
               {volunteerRecords.map((volunteer) => (
@@ -697,7 +745,10 @@ export default function App() {
                       : "text-black/55 hover:bg-white"
                   }`}
                 >
-                  {volunteer.volunteer_name}
+                  <span className="block">{volunteer.volunteer_name}</span>
+                  <span className="block text-[10px] font-bold opacity-60">
+                    {findPartnerOrganization(partnerOrganizations, volunteer.organization_id)?.organization_name ?? "No partner linked"}
+                  </span>
                 </button>
               ))}
             </div>
@@ -710,6 +761,8 @@ export default function App() {
                     pickup={pickup}
                     inventory={inventory}
                     restaurants={restaurantRecords}
+                    volunteers={volunteerRecords}
+                    partnerOrganizations={partnerOrganizations}
                     onComplete={completePickup}
                   />
                 ))}
@@ -759,11 +812,12 @@ export default function App() {
   );
 }
 
-function MetricCard({ label, value, tone }: { label: string; value: string; tone: "gold" | "green" | "white" }) {
+function MetricCard({ label, value, tone }: { label: string; value: string; tone: "gold" | "green" | "white" | "blue" }) {
   const toneClass = {
     gold: "text-[#f2c14e]",
     green: "text-[#78c46a]",
     white: "text-white",
+    blue: "text-[#77c8f2]",
   }[tone];
 
   return (
@@ -1179,15 +1233,21 @@ function PickupCard({
   pickup,
   inventory,
   restaurants,
+  volunteers,
+  partnerOrganizations,
   onComplete,
 }: {
   pickup: RescuePickup;
   inventory: DailyInventory[];
   restaurants: Restaurant[];
+  volunteers: Volunteer[];
+  partnerOrganizations: PartnerOrganization[];
   onComplete: (pickupId: number) => void;
 }) {
   const item = inventory.find((inventoryItem) => inventoryItem.inventory_id === pickup.inventory_id);
   const restaurant = item ? findRestaurant(restaurants, item.restaurant_id) : restaurants[0] ?? demoRestaurants[0];
+  const volunteer = volunteers.find((record) => record.volunteer_id === pickup.volunteer_id);
+  const partnerOrganization = findPartnerOrganization(partnerOrganizations, volunteer?.organization_id);
   const isCompleted = pickup.pickup_status === "Completed";
 
   return (
@@ -1206,6 +1266,9 @@ function PickupCard({
           </div>
           <h3 className="mt-3 text-xl font-semibold tracking-normal">{item?.item_name ?? "Inventory batch"}</h3>
           <p className="mt-1 text-sm text-black/55">{restaurant.business_name}</p>
+          <p className="mt-1 text-sm text-black/55">
+            {volunteer?.volunteer_name ?? "Volunteer"}{partnerOrganization ? ` · ${partnerOrganization.organization_name}` : ""}
+          </p>
           <p className="mt-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-black/40">
             <Clock3 size={14} />
             Assigned {formatDateTime(pickup.assigned_at)}

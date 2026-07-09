@@ -33,10 +33,11 @@ The frontend expects the same tables as the backend blueprint:
 
 - `restaurants`
 - `daily_inventory`
+- `partner_organizations`
 - `volunteers`
 - `rescue_pickups`
 
-The frontend only selects `volunteer_id` and `volunteer_name` from `volunteers`.
+The frontend selects `volunteer_id`, `volunteer_name`, and `organization_id` from `volunteers`.
 Telegram chat IDs remain part of the n8n RBAC workflow.
 
 ## 3. Realtime
@@ -45,6 +46,7 @@ In Supabase, enable Realtime for:
 
 - `restaurants`
 - `daily_inventory`
+- `partner_organizations`
 - `volunteers`
 - `rescue_pickups`
 
@@ -58,6 +60,7 @@ For production, replace these with proper authenticated roles.
 ```sql
 alter table restaurants enable row level security;
 alter table daily_inventory enable row level security;
+alter table partner_organizations enable row level security;
 alter table volunteers enable row level security;
 alter table rescue_pickups enable row level security;
 
@@ -67,6 +70,10 @@ using (true);
 
 create policy "prototype read inventory"
 on daily_inventory for select
+using (true);
+
+create policy "prototype read partner organizations"
+on partner_organizations for select
 using (true);
 
 create policy "prototype insert inventory"
@@ -98,7 +105,7 @@ with check (pickup_status = 'Completed');
 
 ## 5. Recommended Seed Data
 
-Make sure these tables have at least one restaurant and one volunteer before testing claims:
+Make sure these tables have at least one restaurant, one partner organisation, and one volunteer before testing claims:
 
 ```sql
 insert into restaurants (business_name, address, postal_code, contact_email)
@@ -106,9 +113,14 @@ values
 ('Tiong Bahru Curry House', '56 Eng Hoon Street, Singapore', '160056', 'ops@tiongbahrucurry.sg')
 on conflict do nothing;
 
-insert into volunteers (volunteer_name, telegram_chat_id)
+insert into partner_organizations (organization_name, organization_type, contact_email, service_area, verified_status)
 values
-('Demo Volunteer', 'demo-telegram-id')
+('Food from the Heart', 'Food Charity', 'ops@foodheart.example', 'Central Singapore', 'Verified')
+on conflict do nothing;
+
+insert into volunteers (volunteer_name, telegram_chat_id, organization_id)
+values
+('Demo Volunteer', 'demo-telegram-id', 1)
 on conflict do nothing;
 ```
 
@@ -116,9 +128,11 @@ on conflict do nothing;
 
 When Supabase env variables exist, the app:
 
-1. Loads restaurants, volunteers, inventory, and pickups from Supabase.
+1. Loads restaurants, partner organisations, volunteers, inventory, and pickups from Supabase.
 2. Inserts new surplus into `daily_inventory`.
 3. Claims a pickup by updating `daily_inventory.status` to `Claimed`.
 4. Creates a `rescue_pickups` row.
 5. Completes delivery by updating `rescue_pickups.pickup_status` and `completed_at`.
 6. Listens for Realtime changes and refreshes the UI when another client changes data.
+
+The partner organisation table lets the dashboard count how many verified organisations are in the network and show which organisation a volunteer belongs to, without storing final beneficiary addresses.
