@@ -1,0 +1,8 @@
+{
+  "name": "Remix 2: NourishLink",
+  "description": "A tech-for-good platform connecting food donors with organizations in need, aligned with UN SDG 2: Zero Hunger.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
