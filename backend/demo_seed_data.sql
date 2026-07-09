@@ -35,11 +35,31 @@ ON CONFLICT DO NOTHING;
 INSERT INTO volunteers
   (volunteer_name, telegram_chat_id, organization_id)
 VALUES
-  ('Aisha Rahman', 'demo-telegram-1001', 1),
-  ('Jeky Tan', 'demo-telegram-1002', 1),
-  ('Denas Lim', 'demo-telegram-1003', 2),
-  ('Denna Joy', 'demo-telegram-1004', 3),
-  ('Zheng Chengchao', 'demo-telegram-1005', 4)
+  (
+    'Aisha Rahman',
+    'demo-telegram-1001',
+    (SELECT organization_id FROM partner_organizations WHERE organization_name = 'FoodBridge Community Network' ORDER BY organization_id DESC LIMIT 1)
+  ),
+  (
+    'Jeky Tan',
+    'demo-telegram-1002',
+    (SELECT organization_id FROM partner_organizations WHERE organization_name = 'FoodBridge Community Network' ORDER BY organization_id DESC LIMIT 1)
+  ),
+  (
+    'Denas Lim',
+    'demo-telegram-1003',
+    (SELECT organization_id FROM partner_organizations WHERE organization_name = 'CarePlate Relief Kitchen' ORDER BY organization_id DESC LIMIT 1)
+  ),
+  (
+    'Denna Joy',
+    'demo-telegram-1004',
+    (SELECT organization_id FROM partner_organizations WHERE organization_name = 'Harvest Hope Alliance' ORDER BY organization_id DESC LIMIT 1)
+  ),
+  (
+    'Zheng Chengchao',
+    'demo-telegram-1005',
+    (SELECT organization_id FROM partner_organizations WHERE organization_name = 'Silver Meals Collective' ORDER BY organization_id DESC LIMIT 1)
+  )
 ON CONFLICT (telegram_chat_id) DO NOTHING;
 
 -- ---------------------------------------------------------
@@ -48,16 +68,33 @@ ON CONFLICT (telegram_chat_id) DO NOTHING;
 -- ---------------------------------------------------------
 INSERT INTO daily_inventory
   (restaurant_id, item_name, units_produced, units_sold, surplus_quantity, safe_consume_by, status)
-VALUES
-  (1, 'Curry chicken meal packs', 90, 62, 28, CURRENT_TIMESTAMP + INTERVAL '4 hours', 'Available'),
-  (2, 'Salmon bento boxes', 80, 68, 12, CURRENT_TIMESTAMP + INTERVAL '3 hours', 'Available'),
-  (3, 'Wholegrain bread loaves', 120, 84, 36, CURRENT_TIMESTAMP + INTERVAL '14 hours', 'Available'),
-  (4, 'Vegetarian rice bowls', 75, 58, 17, CURRENT_TIMESTAMP + INTERVAL '5 hours', 'Available'),
-  (5, 'Chicken noodle soup portions', 65, 50, 15, CURRENT_TIMESTAMP + INTERVAL '2 hours', 'Available'),
-  (6, 'Pumpkin soup cups', 70, 60, 10, CURRENT_TIMESTAMP + INTERVAL '6 hours', 'Available'),
-  (2, 'Teriyaki chicken bentos', 100, 90, 10, CURRENT_TIMESTAMP - INTERVAL '1 hour', 'Claimed'),
-  (4, 'Tofu vegetable packs', 60, 45, 15, CURRENT_TIMESTAMP - INTERVAL '2 hours', 'Claimed'),
-  (1, 'Dhal and rice sets', 80, 72, 8, CURRENT_TIMESTAMP - INTERVAL '3 hours', 'Claimed');
+SELECT
+  r.restaurant_id,
+  seed.item_name,
+  seed.units_produced,
+  seed.units_sold,
+  seed.surplus_quantity,
+  seed.safe_consume_by,
+  seed.status
+FROM (
+  VALUES
+    ('Tiong Bahru Curry House', 'Curry chicken meal packs', 90, 62, 28, CURRENT_TIMESTAMP + INTERVAL '4 hours', 'Available'),
+    ('Marina Bento Lab', 'Salmon bento boxes', 80, 68, 12, CURRENT_TIMESTAMP + INTERVAL '3 hours', 'Available'),
+    ('Serangoon Bakery Collective', 'Wholegrain bread loaves', 120, 84, 36, CURRENT_TIMESTAMP + INTERVAL '14 hours', 'Available'),
+    ('Jurong Green Kitchen', 'Vegetarian rice bowls', 75, 58, 17, CURRENT_TIMESTAMP + INTERVAL '5 hours', 'Available'),
+    ('Katong Noodle Works', 'Chicken noodle soup portions', 65, 50, 15, CURRENT_TIMESTAMP + INTERVAL '2 hours', 'Available'),
+    ('Queenstown Soup Studio', 'Pumpkin soup cups', 70, 60, 10, CURRENT_TIMESTAMP + INTERVAL '6 hours', 'Available'),
+    ('Marina Bento Lab', 'Teriyaki chicken bentos', 100, 90, 10, CURRENT_TIMESTAMP - INTERVAL '1 hour', 'Claimed'),
+    ('Jurong Green Kitchen', 'Tofu vegetable packs', 60, 45, 15, CURRENT_TIMESTAMP - INTERVAL '2 hours', 'Claimed'),
+    ('Tiong Bahru Curry House', 'Dhal and rice sets', 80, 72, 8, CURRENT_TIMESTAMP - INTERVAL '3 hours', 'Claimed')
+) AS seed(business_name, item_name, units_produced, units_sold, surplus_quantity, safe_consume_by, status)
+JOIN LATERAL (
+  SELECT restaurant_id
+  FROM restaurants
+  WHERE business_name = seed.business_name
+  ORDER BY restaurant_id DESC
+  LIMIT 1
+) r ON true;
 
 -- ---------------------------------------------------------
 -- 5. Rescue pickups

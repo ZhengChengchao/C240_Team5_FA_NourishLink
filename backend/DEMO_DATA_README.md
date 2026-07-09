@@ -22,6 +22,8 @@ The data is synthetic and is designed to show:
 
 If `website/.env.local` contains Supabase URL and anon key, the website should load this data automatically.
 
+The seed file looks up real `organization_id` and `restaurant_id` values by name before inserting volunteers and inventory. This avoids foreign-key errors when your serial IDs are not 1, 2, 3, and so on.
+
 ## Telegram Bot Testing
 
 The demo volunteers use placeholder Telegram IDs:
