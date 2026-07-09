@@ -14,6 +14,8 @@ import {
   PackageCheck,
   Plus,
   Route,
+  Search,
+  Send,
   ShieldCheck,
   Truck,
   Utensils,
@@ -57,6 +59,8 @@ interface RescuePickup {
 }
 
 const WEBHOOK_URL = import.meta.env.VITE_N8N_ADD_SURPLUS_WEBHOOK as string | undefined;
+const CHATBOT_WEBHOOK_URL = import.meta.env.VITE_N8N_CHATBOT_WEBHOOK as string | undefined;
+const TELEGRAM_BOT_URL = import.meta.env.VITE_TELEGRAM_BOT_URL as string | undefined;
 const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
 
 declare global {
@@ -186,12 +190,59 @@ const formatDateTime = (value: string) =>
 const getRestaurant = (restaurantId: number) =>
   restaurants.find((restaurant) => restaurant.restaurant_id === restaurantId) ?? restaurants[0];
 
+type ChatMessage = {
+  id: number;
+  role: "assistant" | "user";
+  content: string;
+};
+
+const denasQuickPrompts = [
+  "How does NourishLink support SDG 2?",
+  "What makes the food rescue workflow safe?",
+  "How does volunteer RBAC work?",
+  "What happens after a volunteer claims food?",
+];
+
+const getLocalDenasAnswer = (message: string) => {
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes("sdg") || normalized.includes("zero hunger")) {
+    return "NourishLink supports SDG 2 Zero Hunger by moving safe surplus meals from restaurants to community distribution before they expire. It reduces food waste while improving access to ready-to-eat food for people who need support.";
+  }
+
+  if (normalized.includes("safe") || normalized.includes("safety") || normalized.includes("consume")) {
+    return "Food safety is handled through the safe_consume_by timestamp. The dispatcher only shows Available inventory that is still inside the safe consumption window, and volunteers are reminded to complete delivery before that time.";
+  }
+
+  if (normalized.includes("rbac") || normalized.includes("volunteer") || normalized.includes("access")) {
+    return "Volunteer RBAC uses the volunteers table and telegram_chat_id as the security gate. n8n checks the sender ID before the AI dispatcher can query inventory or create rescue_pickups records.";
+  }
+
+  if (normalized.includes("claim") || normalized.includes("pickup") || normalized.includes("workflow")) {
+    return "The workflow starts when a restaurant submits surplus. n8n inserts a daily_inventory row, the AI dispatcher lists safe Available batches, a verified volunteer claims one, and rescue_pickups records the dispatch and completion receipt.";
+  }
+
+  return "NourishLink is an autonomous B2B food rescue logistics concept. Restaurants log surplus, n8n and Supabase coordinate safe inventory, and verified volunteers claim pickups through a map-first workflow. Ask me about SDG 2, safety, RBAC, or the volunteer process.";
+};
+
+const extractChatbotAnswer = async (response: Response) => {
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (contentType.includes("application/json")) {
+    const data = await response.json();
+    return String(data.answer ?? data.output ?? data.message ?? data.text ?? JSON.stringify(data));
+  }
+
+  return response.text();
+};
+
 export default function App() {
   const [inventory, setInventory] = useState<DailyInventory[]>(initialInventory);
   const [pickups, setPickups] = useState<RescuePickup[]>(initialPickups);
   const [activeVolunteerId, setActiveVolunteerId] = useState(2);
   const [submitState, setSubmitState] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [submitMessage, setSubmitMessage] = useState("");
+  const [surplusSearch, setSurplusSearch] = useState("");
   const [formData, setFormData] = useState({
     restaurant_id: "1",
     item_name: "",
@@ -201,6 +252,30 @@ export default function App() {
   });
 
   const availableInventory = inventory.filter((item) => item.status === "Available" && item.surplus_quantity > 0);
+  const normalizedSurplusSearch = surplusSearch.trim().toLowerCase();
+  const filteredAvailableInventory = availableInventory.filter((item) => {
+    if (!normalizedSurplusSearch) return true;
+
+    const restaurant = getRestaurant(item.restaurant_id);
+    const searchableText = [
+      item.inventory_id,
+      item.item_name,
+      item.surplus_quantity,
+      item.units_produced,
+      item.units_sold,
+      item.safe_consume_by,
+      formatDateTime(item.safe_consume_by),
+      item.status,
+      restaurant.business_name,
+      restaurant.address,
+      restaurant.postal_code,
+      restaurant.contact_email,
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    return searchableText.includes(normalizedSurplusSearch);
+  });
   const activeVolunteer = volunteers.find((volunteer) => volunteer.volunteer_id === activeVolunteerId) ?? volunteers[0];
 
   const impact = useMemo(() => {
@@ -319,6 +394,7 @@ export default function App() {
             <a href="#surplus" className="hover:text-[#2f6f46]">Surplus</a>
             <a href="#map" className="hover:text-[#2f6f46]">Map</a>
             <a href="#workflow" className="hover:text-[#2f6f46]">AI Workflow</a>
+            <a href="#dispatcher" className="hover:text-[#2f6f46]">Telegram</a>
           </nav>
         </div>
       </header>
@@ -375,12 +451,39 @@ export default function App() {
             title="Available surplus near you"
             detail="This list mirrors the query your Telegram AI dispatcher runs against daily_inventory."
           />
-          <div className="grid gap-4">
-            {availableInventory.map((item) => (
+          <div className="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
+            <div className="flex items-center gap-3 rounded-md bg-[#f6f7f2] px-3 py-2">
+              <Search size={18} className="shrink-0 text-black/35" />
+              <input
+                value={surplusSearch}
+                onChange={(event) => setSurplusSearch(event.target.value)}
+                placeholder="Search food, restaurant, postal code, safe consume by..."
+                className="min-w-0 flex-1 bg-transparent py-2 text-sm font-medium text-[#17211c] outline-none placeholder:text-black/35"
+              />
+              {surplusSearch && (
+                <button
+                  type="button"
+                  onClick={() => setSurplusSearch("")}
+                  className="rounded-md px-2 py-1 text-xs font-bold text-black/45 hover:bg-white hover:text-[#2f6f46]"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="mt-3 flex items-center justify-between px-1 text-xs font-bold uppercase tracking-widest text-black/40">
+              <span>{filteredAvailableInventory.length} matching batches</span>
+              <span>{availableInventory.length > 3 ? "Scroll list" : "Live list"}</span>
+            </div>
+          </div>
+          <div className="grid max-h-[790px] gap-4 overflow-y-auto pr-2 [scrollbar-gutter:stable]">
+            {filteredAvailableInventory.map((item) => (
               <InventoryCard key={item.inventory_id} item={item} onClaim={claimInventory} />
             ))}
             {availableInventory.length === 0 && (
               <EmptyState title="No available surplus right now" detail="New restaurant submissions will appear here." />
+            )}
+            {availableInventory.length > 0 && filteredAvailableInventory.length === 0 && (
+              <EmptyState title="No matching food found" detail="Try searching by food name, restaurant, postal code, quantity, or safe consume by time." />
             )}
           </div>
         </div>
@@ -456,6 +559,10 @@ export default function App() {
           />
         </div>
       </section>
+
+      <TelegramDispatcherSection />
+
+      <DenasChatbot />
     </main>
   );
 }
@@ -926,5 +1033,254 @@ function EmptyState({ title, detail }: { title: string; detail: string }) {
       <p className="font-display font-bold">{title}</p>
       <p className="mt-1 text-sm text-black/45">{detail}</p>
     </div>
+  );
+}
+
+function TelegramDispatcherSection() {
+  const dispatcherSteps = [
+    {
+      title: "Telegram Trigger",
+      detail: "Volunteer messages the bot from Telegram. n8n receives the update event.",
+    },
+    {
+      title: "RBAC verification",
+      detail: "Postgres checks telegram_chat_id against the volunteers table before AI access is allowed.",
+    },
+    {
+      title: "AI dispatch agent",
+      detail: "The agent queries Available surplus and helps the driver claim safe food batches.",
+    },
+    {
+      title: "Receipt completion",
+      detail: "Delivery confirmation updates rescue_pickups to Completed and stamps completed_at.",
+    },
+  ];
+
+  return (
+    <section id="dispatcher" className="border-t border-black/10 bg-[#f6f7f2]">
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
+        <div className="rounded-lg border border-black/10 bg-[#17211c] p-6 text-white shadow-sm">
+          <div className="flex h-12 w-12 items-center justify-center rounded-md bg-[#2AABEE] text-white">
+            <Send size={23} />
+          </div>
+          <h2 className="mt-6 text-3xl font-semibold tracking-normal">Telegram dispatcher bot</h2>
+          <p className="mt-3 text-sm leading-6 text-white/65">
+            This is the secure volunteer operations channel. The website should open the Telegram bot, while n8n keeps
+            the bot token, OpenRouter key, and Postgres credentials safely outside the frontend.
+          </p>
+
+          {TELEGRAM_BOT_URL ? (
+            <a
+              href={TELEGRAM_BOT_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#2AABEE] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#1d97d6] sm:w-auto"
+            >
+              <Send size={17} />
+              Open Telegram Dispatcher
+            </a>
+          ) : (
+            <div className="mt-6 rounded-lg border border-[#f2c14e]/40 bg-[#f2c14e]/10 p-4">
+              <p className="text-sm font-bold text-[#f2c14e]">Telegram URL not configured</p>
+              <p className="mt-2 text-xs leading-5 text-white/65">
+                Add VITE_TELEGRAM_BOT_URL to .env.local, for example https://t.me/your_bot_username?start=volunteer
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <SectionHeader
+            icon={ShieldCheck}
+            eyebrow="Secure volunteer channel"
+            title="How the Telegram bot fits into the project"
+            detail="Denas's FAQ chatbot answers public website questions. This Telegram bot is the authenticated dispatch channel for real pickup operations."
+          />
+
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {dispatcherSteps.map((step, index) => (
+              <div key={step.title} className="rounded-lg border border-black/10 bg-white p-5 shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-widest text-[#2f6f46]">Step {index + 1}</p>
+                <h3 className="mt-3 font-display text-base font-bold">{step.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-black/55">{step.detail}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 rounded-lg border border-black/10 bg-white p-5">
+            <p className="font-display text-base font-bold">Recommended repo evidence</p>
+            <p className="mt-2 text-sm leading-6 text-black/55">
+              Export this n8n workflow and save it as n8n-workflows/telegram-dispatcher.json. Denas can export his FAQ
+              chatbot separately as n8n-workflows/faq-chatbot.json.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DenasChatbot() {
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: 1,
+      role: "assistant",
+      content:
+        "Hi, I am Denas. I can brief you on NourishLink, SDG 2, food safety, RBAC, the n8n workflow, and volunteer pickups.",
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [chatState, setChatState] = useState<"idle" | "sending">("idle");
+
+  const sendMessage = async (message: string) => {
+    const trimmedMessage = message.trim();
+    if (!trimmedMessage || chatState === "sending") return;
+
+    const userMessage: ChatMessage = {
+      id: Date.now(),
+      role: "user",
+      content: trimmedMessage,
+    };
+    const nextMessages = [...messages, userMessage];
+
+    setMessages(nextMessages);
+    setInput("");
+    setChatState("sending");
+
+    try {
+      let answer = getLocalDenasAnswer(trimmedMessage);
+
+      if (CHATBOT_WEBHOOK_URL) {
+        const response = await fetch(CHATBOT_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: trimmedMessage,
+            history: nextMessages.map(({ role, content }) => ({ role, content })),
+            assistant: "Denas",
+            project: "NourishLink",
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Chatbot webhook returned ${response.status}`);
+        }
+
+        const webhookAnswer = (await extractChatbotAnswer(response)).trim();
+        if (webhookAnswer) {
+          answer = webhookAnswer;
+        }
+      }
+
+      setMessages((current) => [
+        ...current,
+        {
+          id: Date.now() + 1,
+          role: "assistant",
+          content: answer,
+        },
+      ]);
+    } catch (error) {
+      setMessages((current) => [
+        ...current,
+        {
+          id: Date.now() + 1,
+          role: "assistant",
+          content: `${error instanceof Error ? error.message : "The chatbot webhook could not be reached."} Local answer: ${getLocalDenasAnswer(trimmedMessage)}`,
+        },
+      ]);
+    } finally {
+      setChatState("idle");
+    }
+  };
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    void sendMessage(input);
+  };
+
+  return (
+    <section className="border-t border-black/10 bg-white">
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[0.72fr_1.28fr] lg:px-8">
+        <div>
+          <SectionHeader
+            icon={Bot}
+            eyebrow="Denas chatbot"
+            title="Project FAQ assistant"
+            detail={
+              CHATBOT_WEBHOOK_URL
+                ? "Connected to the dedicated n8n chatbot webhook."
+                : "Local FAQ mode is active until VITE_N8N_CHATBOT_WEBHOOK is configured."
+            }
+          />
+          <div className="mt-5 grid gap-2">
+            {denasQuickPrompts.map((prompt) => (
+              <button
+                key={prompt}
+                type="button"
+                onClick={() => void sendMessage(prompt)}
+                disabled={chatState === "sending"}
+                className="rounded-md border border-black/10 bg-[#f6f7f2] px-4 py-3 text-left text-sm font-bold text-black/65 transition hover:border-[#2f6f46] hover:text-[#2f6f46] disabled:opacity-60"
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-lg border border-black/10 bg-[#17211c] text-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+            <div>
+              <p className="font-display text-lg font-bold">Denas</p>
+              <p className="text-xs text-white/50">NourishLink FAQ, safety, RBAC, SDG 2</p>
+            </div>
+            <Bot className="text-[#f2c14e]" />
+          </div>
+
+          <div className="flex h-[390px] flex-col">
+            <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <p
+                    className={`max-w-[86%] rounded-lg px-4 py-3 text-sm leading-6 ${
+                      message.role === "user"
+                        ? "bg-[#f2c14e] text-[#17211c]"
+                        : "bg-white/10 text-white/80"
+                    }`}
+                  >
+                    {message.content}
+                  </p>
+                </div>
+              ))}
+              {chatState === "sending" && (
+                <div className="flex justify-start">
+                  <p className="rounded-lg bg-white/10 px-4 py-3 text-sm font-bold text-white/55">Denas is thinking...</p>
+                </div>
+              )}
+            </div>
+
+            <form onSubmit={handleSubmit} className="flex gap-2 border-t border-white/10 p-4">
+              <input
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                placeholder="Ask about the project..."
+                className="min-w-0 flex-1 rounded-md border border-white/10 bg-white px-3 py-3 text-sm font-medium text-[#17211c] outline-none focus:border-[#f2c14e]"
+              />
+              <button
+                type="submit"
+                disabled={chatState === "sending" || !input.trim()}
+                aria-label="Send chatbot message"
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-[#2f6f46] text-white transition hover:bg-[#25583a] disabled:opacity-50"
+              >
+                <Send size={18} />
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
