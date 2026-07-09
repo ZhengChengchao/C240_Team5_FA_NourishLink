@@ -17,8 +17,11 @@ import {
   Search,
   Send,
   ShieldCheck,
+  Smartphone,
+  Store,
   Truck,
   Utensils,
+  Users,
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "./lib/supabase.ts";
 
@@ -236,6 +239,9 @@ type ChatMessage = {
   content: string;
 };
 
+type MobileRole = "restaurant" | "volunteer" | "partner";
+type PageMode = "home" | "app";
+
 const denasQuickPrompts = [
   "How does NourishLink support SDG 2?",
   "What makes the food rescue workflow safe?",
@@ -277,12 +283,26 @@ const extractChatbotAnswer = async (response: Response) => {
 };
 
 export default function App() {
-  const [restaurantRecords, setRestaurantRecords] = useState<Restaurant[]>(demoRestaurants);
-  const [partnerOrganizations, setPartnerOrganizations] = useState<PartnerOrganization[]>(demoPartnerOrganizations);
-  const [volunteerRecords, setVolunteerRecords] = useState<Volunteer[]>(volunteers);
-  const [inventory, setInventory] = useState<DailyInventory[]>(initialInventory);
-  const [pickups, setPickups] = useState<RescuePickup[]>(initialPickups);
+  const [pageMode, setPageMode] = useState<PageMode>(() =>
+    window.location.pathname === "/app" ? "app" : "home"
+  );
+  const [restaurantRecords, setRestaurantRecords] = useState<Restaurant[]>(
+    isSupabaseConfigured ? [] : demoRestaurants
+  );
+  const [partnerOrganizations, setPartnerOrganizations] = useState<PartnerOrganization[]>(
+    isSupabaseConfigured ? [] : demoPartnerOrganizations
+  );
+  const [volunteerRecords, setVolunteerRecords] = useState<Volunteer[]>(
+    isSupabaseConfigured ? [] : volunteers
+  );
+  const [inventory, setInventory] = useState<DailyInventory[]>(
+    isSupabaseConfigured ? [] : initialInventory
+  );
+  const [pickups, setPickups] = useState<RescuePickup[]>(
+    isSupabaseConfigured ? [] : initialPickups
+  );
   const [activeVolunteerId, setActiveVolunteerId] = useState(2);
+  const [isDatabaseLoading, setIsDatabaseLoading] = useState(isSupabaseConfigured);
   const [submitState, setSubmitState] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [submitMessage, setSubmitMessage] = useState("");
   const [databaseMessage, setDatabaseMessage] = useState(
@@ -296,6 +316,21 @@ export default function App() {
     units_sold: "40",
     safe_consume_by: "2026-07-09T22:00",
   });
+
+  const navigateTo = (mode: PageMode) => {
+    const path = mode === "app" ? "/app" : "/";
+    window.history.pushState({}, "", path);
+    setPageMode(mode);
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setPageMode(window.location.pathname === "/app" ? "app" : "home");
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   const availableInventory = inventory.filter((item) => item.status === "Available" && item.surplus_quantity > 0);
   const normalizedSurplusSearch = surplusSearch.trim().toLowerCase();
@@ -332,6 +367,7 @@ export default function App() {
     let cancelled = false;
 
     const loadSupabaseData = async () => {
+      setIsDatabaseLoading(true);
       setDatabaseMessage("Loading live data from Supabase...");
 
       const [restaurantsResult, partnersResult, volunteersResult, inventoryResult, pickupsResult] = await Promise.all([
@@ -351,7 +387,8 @@ export default function App() {
           volunteersResult.error?.message ??
           inventoryResult.error?.message ??
           pickupsResult.error?.message;
-        setDatabaseMessage(`Supabase read failed: ${message}. Demo data remains visible.`);
+        setDatabaseMessage(`Supabase read failed: ${message}. Check env variables, RLS policies, and table names.`);
+        setIsDatabaseLoading(false);
         return;
       }
 
@@ -364,6 +401,7 @@ export default function App() {
       setInventory((inventoryResult.data ?? []) as DailyInventory[]);
       setPickups((pickupsResult.data ?? []) as RescuePickup[]);
       setDatabaseMessage("Supabase connected. Data is loaded and listening for realtime changes.");
+      setIsDatabaseLoading(false);
     };
 
     void loadSupabaseData();
@@ -614,14 +652,44 @@ export default function App() {
             </div>
           </div>
           <nav className="hidden items-center gap-6 text-sm font-bold text-black/60 md:flex">
-            <a href="#surplus" className="hover:text-[#2f6f46]">Surplus</a>
-            <a href="#map" className="hover:text-[#2f6f46]">Map</a>
-            <a href="#workflow" className="hover:text-[#2f6f46]">AI Workflow</a>
-            <a href="#dispatcher" className="hover:text-[#2f6f46]">Telegram</a>
+            <button type="button" onClick={() => navigateTo("home")} className="hover:text-[#2f6f46]">
+              Dashboard
+            </button>
+            <button type="button" onClick={() => navigateTo("app")} className="hover:text-[#2f6f46]">
+              App Demo
+            </button>
+            {pageMode === "home" && (
+              <>
+                <a href="#surplus" className="hover:text-[#2f6f46]">Surplus</a>
+                <a href="#map" className="hover:text-[#2f6f46]">Map</a>
+                <a href="#workflow" className="hover:text-[#2f6f46]">AI Workflow</a>
+                <a href="#dispatcher" className="hover:text-[#2f6f46]">Telegram</a>
+              </>
+            )}
           </nav>
         </div>
       </header>
 
+      {pageMode === "app" ? (
+        <AppDemoPage
+          formData={formData}
+          submitState={submitState}
+          restaurants={restaurantRecords}
+          inventory={inventory}
+          availableInventory={availableInventory}
+          pickups={pickups}
+          volunteers={volunteerRecords}
+          partnerOrganizations={partnerOrganizations}
+          activeVolunteerId={activeVolunteerId}
+          onFormChange={handleInputChange}
+          onSubmitSurplus={handleSurplusSubmit}
+          onClaim={claimInventory}
+          onComplete={completePickup}
+          onVolunteerChange={setActiveVolunteerId}
+          onBackToDashboard={() => navigateTo("home")}
+        />
+      ) : (
+        <>
       <section className="border-b border-black/10 bg-[#17211c] text-white">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:px-8 lg:py-16">
           <div className="flex flex-col justify-center">
@@ -637,10 +705,10 @@ export default function App() {
               volunteers claim nearby pickups through a map-first workflow.
             </p>
             <div className="mt-8 grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-4">
-              <MetricCard label="Available units" value={impact.availableUnits.toString()} tone="gold" />
-              <MetricCard label="Units claimed" value={impact.rescuedUnits.toString()} tone="green" />
-              <MetricCard label="Receipts locked" value={impact.completedPickups.toString()} tone="white" />
-              <MetricCard label="Partner orgs" value={impact.partnerCount.toString()} tone="blue" />
+              <MetricCard label="Available units" value={isDatabaseLoading ? "..." : impact.availableUnits.toString()} tone="gold" />
+              <MetricCard label="Units claimed" value={isDatabaseLoading ? "..." : impact.rescuedUnits.toString()} tone="green" />
+              <MetricCard label="Receipts locked" value={isDatabaseLoading ? "..." : impact.completedPickups.toString()} tone="white" />
+              <MetricCard label="Partner orgs" value={isDatabaseLoading ? "..." : impact.partnerCount.toString()} tone="blue" />
             </div>
             <p className="mt-5 max-w-3xl rounded-lg border border-white/15 bg-white/8 px-4 py-3 text-sm text-white/65">
               {databaseMessage}
@@ -663,7 +731,7 @@ export default function App() {
         </div>
       </section>
 
-      <section id="surplus" className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[0.92fr_1.08fr] lg:px-8">
+      <section id="surplus" className="mx-auto grid max-w-7xl items-start gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[0.92fr_1.08fr] lg:px-8">
         <RestaurantSurplusForm
           formData={formData}
           submitState={submitState}
@@ -704,7 +772,7 @@ export default function App() {
               <span>{availableInventory.length > 3 ? "Scroll list" : "Live list"}</span>
             </div>
           </div>
-          <div className="grid max-h-[790px] gap-4 overflow-y-auto pr-2 [scrollbar-gutter:stable]">
+          <div className="grid max-h-[min(790px,calc(100vh-220px))] gap-4 overflow-y-auto pr-2 [scrollbar-gutter:stable]">
             {filteredAvailableInventory.map((item) => (
               <InventoryCard
                 key={item.inventory_id}
@@ -713,10 +781,13 @@ export default function App() {
                 onClaim={claimInventory}
               />
             ))}
-            {availableInventory.length === 0 && (
+            {isDatabaseLoading && (
+              <EmptyState title="Loading live surplus data" detail="Supabase is syncing restaurants, inventory, pickups, and partner organisations." />
+            )}
+            {!isDatabaseLoading && availableInventory.length === 0 && (
               <EmptyState title="No available surplus right now" detail="New restaurant submissions will appear here." />
             )}
-            {availableInventory.length > 0 && filteredAvailableInventory.length === 0 && (
+            {!isDatabaseLoading && availableInventory.length > 0 && filteredAvailableInventory.length === 0 && (
               <EmptyState title="No matching food found" detail="Try searching by food name, restaurant, postal code, quantity, or safe consume by time." />
             )}
           </div>
@@ -766,7 +837,10 @@ export default function App() {
                     onComplete={completePickup}
                   />
                 ))}
-              {pickups.filter((pickup) => pickup.volunteer_id === activeVolunteerId).length === 0 && (
+              {isDatabaseLoading && (
+                <EmptyState title="Loading pickup records" detail="Supabase is syncing active and completed pickups." />
+              )}
+              {!isDatabaseLoading && pickups.filter((pickup) => pickup.volunteer_id === activeVolunteerId).length === 0 && (
                 <EmptyState title="No pickups assigned" detail="Claim an available batch to create a rescue_pickups row." />
               )}
             </div>
@@ -808,6 +882,8 @@ export default function App() {
       <TelegramDispatcherSection />
 
       <DenasChatbot />
+        </>
+      )}
     </main>
   );
 }
@@ -1006,7 +1082,7 @@ function InventoryCard({
   return (
     <article className="rounded-lg border border-black/10 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+        <div className="self-start">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-md bg-[#2f6f46]/10 px-2 py-1 text-xs font-bold text-[#2f6f46]">
               Food ID {item.inventory_id}
@@ -1305,6 +1381,424 @@ function EmptyState({ title, detail }: { title: string; detail: string }) {
       <p className="font-display font-bold">{title}</p>
       <p className="mt-1 text-sm text-black/45">{detail}</p>
     </div>
+  );
+}
+
+function AppDemoPage({
+  onBackToDashboard,
+  ...mobileProps
+}: React.ComponentProps<typeof MobileAppPrototype> & {
+  onBackToDashboard: () => void;
+}) {
+  return (
+    <section className="min-h-[calc(100vh-73px)] bg-white">
+      <div className="mx-auto grid max-w-7xl items-start gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[0.78fr_1.22fr] lg:px-8">
+        <div>
+          <button
+            type="button"
+            onClick={onBackToDashboard}
+            className="mb-6 rounded-md border border-black/10 bg-[#f6f7f2] px-4 py-2 text-sm font-bold text-black/60 hover:border-[#2f6f46] hover:text-[#2f6f46]"
+          >
+            Back to dashboard
+          </button>
+          <SectionHeader
+            icon={Smartphone}
+            eyebrow="Mobile app emulator"
+            title="Role-based app experience"
+            detail="This separate app page demonstrates how restaurants, volunteers, and partner organisations would sign in or register before using NourishLink."
+          />
+          <div className="mt-5 grid gap-3">
+            <WorkflowStep
+              icon={Store}
+              title="Restaurant"
+              detail="Register a restaurant profile, submit surplus, and track claimed inventory."
+            />
+            <WorkflowStep
+              icon={Truck}
+              title="Volunteer"
+              detail="Sign in as a verified volunteer, search food, claim pickups, and complete delivery."
+            />
+            <WorkflowStep
+              icon={Users}
+              title="Partner organisation"
+              detail="View volunteer teams, completed pickups, and rescued food units."
+            />
+          </div>
+          <p className="mt-5 rounded-lg border border-black/10 bg-[#f6f7f2] p-4 text-sm leading-6 text-black/55">
+            This is prototype authentication for demonstration. A production version would use Supabase Auth plus a
+            profiles table linked to restaurants, volunteers, and partner organisations.
+          </p>
+        </div>
+
+        <MobileAppPrototype {...mobileProps} />
+      </div>
+    </section>
+  );
+}
+
+function MobileAppPrototype({
+  formData,
+  submitState,
+  restaurants,
+  inventory,
+  availableInventory,
+  pickups,
+  volunteers,
+  partnerOrganizations,
+  activeVolunteerId,
+  onFormChange,
+  onSubmitSurplus,
+  onClaim,
+  onComplete,
+  onVolunteerChange,
+}: {
+  formData: {
+    restaurant_id: string;
+    item_name: string;
+    units_produced: string;
+    units_sold: string;
+    safe_consume_by: string;
+  };
+  submitState: "idle" | "sending" | "success" | "error";
+  restaurants: Restaurant[];
+  inventory: DailyInventory[];
+  availableInventory: DailyInventory[];
+  pickups: RescuePickup[];
+  volunteers: Volunteer[];
+  partnerOrganizations: PartnerOrganization[];
+  activeVolunteerId: number;
+  onFormChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  onSubmitSurplus: (event: React.FormEvent) => void;
+  onClaim: (inventoryId: number) => void | Promise<void>;
+  onComplete: (pickupId: number) => void | Promise<void>;
+  onVolunteerChange: (volunteerId: number) => void;
+}) {
+  const [mobileRole, setMobileRole] = useState<MobileRole>("volunteer");
+  const [selectedPartnerId, setSelectedPartnerId] = useState<number | null>(
+    partnerOrganizations[0]?.organization_id ?? null
+  );
+
+  useEffect(() => {
+    if (!selectedPartnerId && partnerOrganizations[0]) {
+      setSelectedPartnerId(partnerOrganizations[0].organization_id);
+    }
+  }, [partnerOrganizations, selectedPartnerId]);
+
+  const activeVolunteer = volunteers.find((volunteer) => volunteer.volunteer_id === activeVolunteerId) ?? volunteers[0];
+  const activeVolunteerOrg = findPartnerOrganization(partnerOrganizations, activeVolunteer?.organization_id);
+  const selectedPartner = partnerOrganizations.find((organization) => organization.organization_id === selectedPartnerId);
+  const partnerVolunteerIds = volunteers
+    .filter((volunteer) => volunteer.organization_id === selectedPartnerId)
+    .map((volunteer) => volunteer.volunteer_id);
+  const partnerPickups = pickups.filter((pickup) => partnerVolunteerIds.includes(pickup.volunteer_id));
+  const partnerCompletedPickups = partnerPickups.filter((pickup) => pickup.pickup_status === "Completed");
+  const partnerUnitsRescued = partnerCompletedPickups.reduce((total, pickup) => {
+    const item = inventory.find((record) => record.inventory_id === pickup.inventory_id);
+    return total + (item?.surplus_quantity ?? 0);
+  }, 0);
+  const surplus = Math.max(Number(formData.units_produced) - Number(formData.units_sold), 0);
+  const mobilePickups = pickups.filter((pickup) => pickup.volunteer_id === activeVolunteerId);
+  const [authMode, setAuthMode] = useState<"sign-in" | "register">("sign-in");
+  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [demoName, setDemoName] = useState("");
+  const [demoEmail, setDemoEmail] = useState("");
+
+  const handleDemoAuth = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!demoName.trim() || !demoEmail.trim()) return;
+    setIsSignedIn(true);
+  };
+
+  return (
+        <div className="mx-auto w-full max-w-[390px] self-start rounded-[1.75rem] border border-black/15 bg-[#111c17] p-3 shadow-2xl sm:rounded-[2rem]">
+          <div className="rounded-[1.35rem] bg-[#f6f7f2] p-4 text-[#17211c] sm:rounded-[1.55rem]">
+            <div className="mx-auto mb-3 h-1.5 w-20 rounded-full bg-black/20" />
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#2f6f46]">NourishLink App</p>
+                <h3 className="font-display text-2xl font-bold">{isSignedIn ? `Hi, ${demoName}` : "Welcome"}</h3>
+              </div>
+              <Smartphone className="text-[#2f6f46]" size={24} />
+            </div>
+
+            {!isSignedIn ? (
+              <form onSubmit={handleDemoAuth} className="space-y-3">
+                <div className="grid grid-cols-2 gap-2 rounded-lg bg-white p-2">
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode("sign-in")}
+                    className={`rounded-md px-3 py-2 text-xs font-bold ${
+                      authMode === "sign-in" ? "bg-[#2f6f46] text-white" : "text-black/50"
+                    }`}
+                  >
+                    Sign in
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode("register")}
+                    className={`rounded-md px-3 py-2 text-xs font-bold ${
+                      authMode === "register" ? "bg-[#2f6f46] text-white" : "text-black/50"
+                    }`}
+                  >
+                    Register
+                  </button>
+                </div>
+
+                <div className="rounded-lg bg-white p-3">
+                  <p className="text-xs font-bold uppercase tracking-widest text-black/40">
+                    {authMode === "sign-in" ? "Demo sign in" : "Demo registration"}
+                  </p>
+                  <p className="mt-1 text-sm leading-5 text-black/55">
+                    Type any demo name and email, then choose a role. No password is stored.
+                  </p>
+                </div>
+
+                <input
+                  value={demoName}
+                  onChange={(event) => setDemoName(event.target.value)}
+                  placeholder="Name"
+                  className="w-full rounded-md border border-black/10 bg-white px-3 py-3 text-sm font-bold outline-none"
+                />
+                <input
+                  value={demoEmail}
+                  onChange={(event) => setDemoEmail(event.target.value)}
+                  placeholder="Email"
+                  type="email"
+                  className="w-full rounded-md border border-black/10 bg-white px-3 py-3 text-sm font-bold outline-none"
+                />
+
+            <div className="grid grid-cols-3 gap-2 rounded-lg bg-white p-2">
+              {[
+                { role: "restaurant" as MobileRole, label: "Restaurant", icon: Store },
+                { role: "volunteer" as MobileRole, label: "Volunteer", icon: Truck },
+                { role: "partner" as MobileRole, label: "Partner", icon: Users },
+              ].map((item) => (
+                <button
+                  key={item.role}
+                  type="button"
+                  onClick={() => setMobileRole(item.role)}
+                  className={`rounded-md px-2 py-2 text-[11px] font-bold transition ${
+                    mobileRole === item.role ? "bg-[#2f6f46] text-white" : "text-black/50 hover:bg-[#f6f7f2]"
+                  }`}
+                >
+                  <item.icon className="mx-auto mb-1" size={16} />
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+                <button
+                  type="submit"
+                  disabled={!demoName.trim() || !demoEmail.trim()}
+                  className="w-full rounded-md bg-[#17211c] px-4 py-3 text-sm font-bold text-white disabled:opacity-40"
+                >
+                  Continue as {mobileRole === "restaurant" ? "Restaurant" : mobileRole === "volunteer" ? "Volunteer" : "Partner"}
+                </button>
+              </form>
+            ) : (
+              <>
+                <div className="mb-4 rounded-lg bg-white p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-widest text-black/40">{demoEmail}</p>
+                      <p className="text-sm font-bold">
+                        {mobileRole === "restaurant" ? "Restaurant account" : mobileRole === "volunteer" ? "Volunteer account" : "Partner account"}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsSignedIn(false)}
+                      className="rounded-md bg-[#f6f7f2] px-2 py-1 text-xs font-bold text-black/45"
+                    >
+                      Switch
+                    </button>
+                  </div>
+                </div>
+
+            <div className="mt-3 max-h-[620px] overflow-y-auto pr-1 [scrollbar-gutter:stable]">
+              {mobileRole === "restaurant" && (
+                <form onSubmit={onSubmitSurplus} className="space-y-3">
+                  <div className="rounded-lg bg-white p-4">
+                    <p className="text-xs font-bold uppercase tracking-widest text-black/40">Restaurant mode</p>
+                    <p className="mt-1 text-sm text-black/55">Create a surplus batch for volunteer pickup.</p>
+                  </div>
+                  <label className="block space-y-1">
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-black/40">Restaurant</span>
+                    <select
+                      name="restaurant_id"
+                      value={formData.restaurant_id}
+                      onChange={onFormChange}
+                      className="w-full rounded-md border border-black/10 bg-white px-3 py-3 text-sm font-bold outline-none"
+                    >
+                      {restaurants.map((restaurant) => (
+                        <option key={restaurant.restaurant_id} value={restaurant.restaurant_id}>
+                          {restaurant.business_name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <input
+                    name="item_name"
+                    value={formData.item_name}
+                    onChange={onFormChange}
+                    placeholder="Food item"
+                    className="w-full rounded-md border border-black/10 bg-white px-3 py-3 text-sm font-bold outline-none"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      name="units_produced"
+                      type="number"
+                      min="0"
+                      value={formData.units_produced}
+                      onChange={onFormChange}
+                      className="w-full rounded-md border border-black/10 bg-white px-3 py-3 text-sm font-bold outline-none"
+                    />
+                    <input
+                      name="units_sold"
+                      type="number"
+                      min="0"
+                      value={formData.units_sold}
+                      onChange={onFormChange}
+                      className="w-full rounded-md border border-black/10 bg-white px-3 py-3 text-sm font-bold outline-none"
+                    />
+                  </div>
+                  <input
+                    name="safe_consume_by"
+                    type="datetime-local"
+                    value={formData.safe_consume_by}
+                    onChange={onFormChange}
+                    className="w-full rounded-md border border-black/10 bg-white px-3 py-3 text-sm font-bold outline-none"
+                  />
+                  <div className="rounded-lg bg-[#f2c14e]/20 p-4">
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-black/40">Computed surplus</p>
+                    <p className="font-display text-3xl font-bold">{surplus} units</p>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={submitState === "sending"}
+                    className="w-full rounded-md bg-[#2f6f46] px-4 py-3 text-sm font-bold text-white disabled:opacity-60"
+                  >
+                    Submit surplus
+                  </button>
+                </form>
+              )}
+
+              {mobileRole === "volunteer" && (
+                <div className="space-y-3">
+                  <div className="rounded-lg bg-white p-4">
+                    <p className="text-xs font-bold uppercase tracking-widest text-black/40">Volunteer mode</p>
+                    <select
+                      value={activeVolunteerId}
+                      onChange={(event) => onVolunteerChange(Number(event.target.value))}
+                      className="mt-2 w-full rounded-md border border-black/10 bg-[#f6f7f2] px-3 py-2 text-sm font-bold outline-none"
+                    >
+                      {volunteers.map((volunteer) => (
+                        <option key={volunteer.volunteer_id} value={volunteer.volunteer_id}>
+                          {volunteer.volunteer_name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-2 text-xs text-black/45">
+                      {activeVolunteerOrg?.organization_name ?? "No organisation linked"}
+                    </p>
+                  </div>
+
+                  {availableInventory.slice(0, 5).map((item) => {
+                    const restaurant = findRestaurant(restaurants, item.restaurant_id);
+                    return (
+                      <div key={item.inventory_id} className="rounded-lg bg-white p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-[#2f6f46]">
+                              Food ID {item.inventory_id}
+                            </p>
+                            <h4 className="mt-1 font-display text-xl font-bold">{item.item_name}</h4>
+                          </div>
+                          <span className="rounded-md bg-[#f2c14e]/20 px-2 py-1 text-xs font-bold">
+                            {item.surplus_quantity}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-xs text-black/50">{restaurant.business_name}</p>
+                        <p className="mt-1 text-xs font-bold text-red-700">By {formatDateTime(item.safe_consume_by)}</p>
+                        <button
+                          type="button"
+                          onClick={() => void onClaim(item.inventory_id)}
+                          className="mt-3 w-full rounded-md bg-[#17211c] px-3 py-2 text-sm font-bold text-white"
+                        >
+                          Claim pickup
+                        </button>
+                      </div>
+                    );
+                  })}
+
+                  {mobilePickups.map((pickup) => {
+                    const item = inventory.find((record) => record.inventory_id === pickup.inventory_id);
+                    return (
+                      <div key={pickup.pickup_id} className="rounded-lg border border-[#2f6f46]/20 bg-[#2f6f46]/8 p-4">
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-[#2f6f46]">
+                          My pickup #{pickup.pickup_id}
+                        </p>
+                        <p className="mt-1 text-sm font-bold">{item?.item_name ?? "Inventory batch"}</p>
+                        <button
+                          type="button"
+                          onClick={() => void onComplete(pickup.pickup_id)}
+                          disabled={pickup.pickup_status === "Completed"}
+                          className="mt-3 w-full rounded-md bg-[#2f6f46] px-3 py-2 text-sm font-bold text-white disabled:bg-black/15 disabled:text-black/40"
+                        >
+                          {pickup.pickup_status === "Completed" ? "Completed" : "Complete delivery"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {mobileRole === "partner" && (
+                <div className="space-y-3">
+                  <div className="rounded-lg bg-white p-4">
+                    <p className="text-xs font-bold uppercase tracking-widest text-black/40">Partner organisation</p>
+                    <select
+                      value={selectedPartnerId ?? ""}
+                      onChange={(event) => setSelectedPartnerId(Number(event.target.value))}
+                      className="mt-2 w-full rounded-md border border-black/10 bg-[#f6f7f2] px-3 py-2 text-sm font-bold outline-none"
+                    >
+                      {partnerOrganizations.map((organization) => (
+                        <option key={organization.organization_id} value={organization.organization_id}>
+                          {organization.organization_name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-2 text-xs text-black/45">{selectedPartner?.service_area ?? "Service area not set"}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-lg bg-white p-4">
+                      <p className="font-display text-3xl font-bold">{partnerVolunteerIds.length}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-black/40">Volunteers</p>
+                    </div>
+                    <div className="rounded-lg bg-white p-4">
+                      <p className="font-display text-3xl font-bold">{partnerCompletedPickups.length}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-black/40">Receipts</p>
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-[#17211c] p-4 text-white">
+                    <p className="font-display text-4xl font-bold">{partnerUnitsRescued}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/45">Units rescued</p>
+                  </div>
+                  {volunteers
+                    .filter((volunteer) => volunteer.organization_id === selectedPartnerId)
+                    .map((volunteer) => (
+                      <div key={volunteer.volunteer_id} className="rounded-lg bg-white p-4">
+                        <p className="text-sm font-bold">{volunteer.volunteer_name}</p>
+                        <p className="text-xs text-black/45">Verified volunteer</p>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+              </>
+            )}
+          </div>
+        </div>
   );
 }
 
