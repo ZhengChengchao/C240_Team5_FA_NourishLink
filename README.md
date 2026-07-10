@@ -1,8 +1,4 @@
-# NourishLink Project Progress Record
-
-Last updated: 10 July 2026
-
-This README is also a handoff memory file. If this file is uploaded into a new Codex project/thread, use it as the source of truth for the current NourishLink state, decisions, and next steps.
+# NourishLink Project 
 
 ## Project Summary
 
