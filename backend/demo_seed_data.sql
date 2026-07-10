@@ -46,7 +46,7 @@ VALUES
     (SELECT organization_id FROM partner_organizations WHERE organization_name = 'FoodBridge Community Network' ORDER BY organization_id DESC LIMIT 1)
   ),
   (
-    'Denas Lim',
+    'Denas Ho',
     'demo-telegram-1003',
     (SELECT organization_id FROM partner_organizations WHERE organization_name = 'CarePlate Relief Kitchen' ORDER BY organization_id DESC LIMIT 1)
   ),

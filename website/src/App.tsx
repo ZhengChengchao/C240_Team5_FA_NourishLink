@@ -233,7 +233,7 @@ const findPartnerOrganization = (
   organizationId?: number | null
 ) => organizations.find((organization) => organization.organization_id === organizationId);
 
-const getVolunteerDisplayName = (name?: string) => (name === "Denas Lim" ? "Denas Ho" : name ?? "Volunteer");
+const getVolunteerDisplayName = (name?: string) => name ?? "Volunteer";
 
 type MobileRole = "restaurant" | "volunteer" | "partner";
 type PageMode = "home" | "app";
