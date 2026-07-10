@@ -233,6 +233,8 @@ const findPartnerOrganization = (
   organizationId?: number | null
 ) => organizations.find((organization) => organization.organization_id === organizationId);
 
+const getVolunteerDisplayName = (name?: string) => (name === "Denas Lim" ? "Denas Ho" : name ?? "Volunteer");
+
 type MobileRole = "restaurant" | "volunteer" | "partner";
 type PageMode = "home" | "app";
 
@@ -350,7 +352,10 @@ export default function App() {
 
       const loadedRestaurants = (restaurantsResult.data ?? []) as Restaurant[];
       const loadedPartners = (partnersResult.data ?? []) as PartnerOrganization[];
-      const loadedVolunteers = (volunteersResult.data ?? []) as Volunteer[];
+      const loadedVolunteers = ((volunteersResult.data ?? []) as Volunteer[]).map((volunteer) => ({
+        ...volunteer,
+        volunteer_name: getVolunteerDisplayName(volunteer.volunteer_name),
+      }));
       setRestaurantRecords(loadedRestaurants.length ? loadedRestaurants : demoRestaurants);
       setPartnerOrganizations(loadedPartners.length ? loadedPartners : demoPartnerOrganizations);
       setVolunteerRecords(loadedVolunteers.length ? loadedVolunteers : volunteers);
@@ -615,13 +620,14 @@ export default function App() {
             </div>
             <nav className="hidden items-center gap-6 text-sm font-bold text-black/60 md:flex">
               <button type="button" onClick={() => navigateTo("home")} className="hover:text-[#2f6f46]">
-                Dashboard
+                Overview
               </button>
               <button type="button" onClick={() => navigateTo("app")} className="hover:text-[#2f6f46]">
                 App Demo
               </button>
               {pageMode === "home" && (
                 <>
+                  <a href="#value" className="hover:text-[#2f6f46]">Value</a>
                   <a href="#surplus" className="hover:text-[#2f6f46]">Surplus</a>
                   <a href="#map" className="hover:text-[#2f6f46]">Map</a>
                   <a href="#workflow" className="hover:text-[#2f6f46]">AI Workflow</a>
@@ -646,7 +652,7 @@ export default function App() {
                 onClick={() => navigateTo("home")}
                 className="rounded-md bg-[#f6f7f2] px-4 py-3 text-left hover:text-[#2f6f46]"
               >
-                Dashboard
+                Overview
               </button>
               <button
                 type="button"
@@ -657,6 +663,7 @@ export default function App() {
               </button>
               {pageMode === "home" && (
                 <>
+                  <a onClick={() => setIsMobileMenuOpen(false)} href="#value" className="rounded-md bg-[#f6f7f2] px-4 py-3 hover:text-[#2f6f46]">Value</a>
                   <a onClick={() => setIsMobileMenuOpen(false)} href="#surplus" className="rounded-md bg-[#f6f7f2] px-4 py-3 hover:text-[#2f6f46]">Surplus</a>
                   <a onClick={() => setIsMobileMenuOpen(false)} href="#map" className="rounded-md bg-[#f6f7f2] px-4 py-3 hover:text-[#2f6f46]">Map</a>
                   <a onClick={() => setIsMobileMenuOpen(false)} href="#workflow" className="rounded-md bg-[#f6f7f2] px-4 py-3 hover:text-[#2f6f46]">AI Workflow</a>
@@ -729,7 +736,50 @@ export default function App() {
         </div>
       </section>
 
-      <section id="surplus" className="mx-auto grid max-w-7xl items-start gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[0.92fr_1.08fr] lg:px-8">
+      <section id="value" className="border-b border-black/10 bg-[#f6f7f2]">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <SectionHeader
+            icon={ShieldCheck}
+            eyebrow="Product value"
+            title="Built for impact, trust, and scale"
+            detail="NourishLink turns surplus food into a practical operating workflow: restaurants see what they rescued, volunteers get clear pickups, and partner organisations receive accountable records."
+          />
+          <div className="mt-6 grid gap-4 lg:grid-cols-3">
+            <EvidenceCard
+              icon={PackageCheck}
+              title="Rescue Impact"
+              detail="The dashboard makes SDG 2 value visible through live food units, completed receipts, and partner participation."
+              points={[
+                "Shows available, claimed, and completed rescue activity.",
+                "Transforms end-of-day leftovers into pickup opportunities.",
+                "Gives the team a clear story for demo, report, and presentation.",
+              ]}
+            />
+            <EvidenceCard
+              icon={ShieldCheck}
+              title="Trusted Operations"
+              detail="The workflow focuses on verified organisations and operational receipts instead of collecting unnecessary beneficiary data."
+              points={[
+                "Safe-consume times stay visible across restaurant and volunteer flows.",
+                "Volunteer access is tied to partner organisation identity.",
+                "Receipts record food, collector, status, and completion time.",
+              ]}
+            />
+            <EvidenceCard
+              icon={Database}
+              title="Connected Workflow"
+              detail="The prototype connects the website, database, automation, chatbot, map, and AI dispatcher into one coherent product demo."
+              points={[
+                "React/Vite powers the dashboard and app emulator.",
+                "Supabase stores inventory, partners, volunteers, and pickups.",
+                "Botpress, n8n, Telegram, Google Maps, and MCP support the AI workflow.",
+              ]}
+            />
+          </div>
+        </div>
+      </section>
+
+      <section id="surplus" className="mx-auto grid max-w-7xl items-start gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.92fr_1.08fr] lg:px-8">
         <div className="space-y-4">
           <SectionHeader
             icon={Building2}
@@ -801,7 +851,7 @@ export default function App() {
       </section>
 
       <section id="map" className="border-y border-black/10 bg-white">
-        <div className="mx-auto grid max-w-7xl items-start gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
+        <div className="mx-auto grid max-w-7xl items-start gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
           <div className="space-y-4">
             <SectionHeader
               icon={Map}
@@ -821,21 +871,21 @@ export default function App() {
               icon={Route}
               eyebrow="Driver state"
               title="Claimed pickups and receipts"
-              detail={`Signed in as ${activeVolunteer.volunteer_name}${activePartnerOrganization ? ` from ${activePartnerOrganization.organization_name}` : ""}. RBAC still lives in n8n using telegram_chat_id.`}
+              detail={`Signed in as ${getVolunteerDisplayName(activeVolunteer.volunteer_name)}${activePartnerOrganization ? ` from ${activePartnerOrganization.organization_name}` : ""}. RBAC still lives in n8n using telegram_chat_id.`}
             />
-            <div className="flex gap-2 rounded-lg border border-black/10 bg-[#f6f7f2] p-2">
+            <div className="grid grid-cols-2 gap-2 rounded-lg border border-black/10 bg-[#f6f7f2] p-2 sm:grid-cols-5">
               {volunteerRecords.map((volunteer) => (
                 <button
                   key={volunteer.volunteer_id}
                   onClick={() => setActiveVolunteerId(volunteer.volunteer_id)}
-                  className={`flex-1 rounded-md px-3 py-2 text-sm font-bold transition ${
+                  className={`min-h-[92px] rounded-md px-3 py-3 text-center text-sm font-bold transition ${
                     activeVolunteerId === volunteer.volunteer_id
                       ? "bg-[#2f6f46] text-white"
                       : "text-black/55 hover:bg-white"
                   }`}
                 >
-                  <span className="block">{volunteer.volunteer_name}</span>
-                  <span className="block text-[10px] font-bold opacity-60">
+                  <span className="block leading-tight">{getVolunteerDisplayName(volunteer.volunteer_name)}</span>
+                  <span className="mt-1 block text-[10px] font-bold leading-tight opacity-60">
                     {findPartnerOrganization(partnerOrganizations, volunteer.organization_id)?.organization_name ?? "No partner linked"}
                   </span>
                 </button>
@@ -1347,7 +1397,7 @@ function PickupCard({
           <h3 className="mt-3 text-xl font-semibold tracking-normal">{item?.item_name ?? "Inventory batch"}</h3>
           <p className="mt-1 text-sm text-black/55">{restaurant.business_name}</p>
           <p className="mt-1 text-sm text-black/55">
-            {volunteer?.volunteer_name ?? "Volunteer"}{partnerOrganization ? ` - ${partnerOrganization.organization_name}` : ""}
+            {getVolunteerDisplayName(volunteer?.volunteer_name)}{partnerOrganization ? ` - ${partnerOrganization.organization_name}` : ""}
           </p>
           <p className="mt-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-black/40">
             <Clock3 size={14} />
@@ -1369,12 +1419,42 @@ function PickupCard({
 
 function WorkflowStep({ icon: Icon, title, detail }: { icon: React.ElementType; title: string; detail: string }) {
   return (
-    <div className="rounded-lg border border-black/10 bg-white p-5 shadow-sm">
+    <div className="h-full rounded-lg border border-black/10 bg-white p-5 shadow-sm">
       <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-md bg-[#2f6f46]/10 text-[#2f6f46]">
         <Icon size={20} />
       </div>
       <h3 className="font-display text-base font-bold">{title}</h3>
       <p className="mt-2 text-sm leading-6 text-black/55">{detail}</p>
+    </div>
+  );
+}
+
+function EvidenceCard({
+  icon: Icon,
+  title,
+  detail,
+  points,
+}: {
+  icon: React.ElementType;
+  title: string;
+  detail: string;
+  points: string[];
+}) {
+  return (
+    <div className="flex h-full flex-col rounded-lg border border-black/10 bg-white p-5 shadow-sm">
+      <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-md bg-[#2f6f46]/10 text-[#2f6f46]">
+        <Icon size={20} />
+      </div>
+      <h3 className="font-display text-lg font-bold">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-black/55">{detail}</p>
+      <div className="mt-4 grid flex-1 content-start gap-2">
+        {points.map((point) => (
+          <p key={point} className="flex gap-2 rounded-md bg-[#f6f7f2] px-3 py-2 text-xs leading-5 text-black/60">
+            <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#2f6f46]" />
+            <span>{point}</span>
+          </p>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1426,6 +1506,7 @@ function SiteFooter() {
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-white/40">Project</p>
             <div className="mt-3 grid gap-2">
+              <a href="/#value" className="hover:text-[#f2c14e]">Product value</a>
               <a href="/#surplus" className="hover:text-[#f2c14e]">Surplus dashboard</a>
               <a href="/#map" className="hover:text-[#f2c14e]">Map handoff</a>
               <a href="/#workflow" className="hover:text-[#f2c14e]">AI workflow</a>
@@ -1461,7 +1542,7 @@ function AppDemoPage({
               onClick={onBackToDashboard}
               className="mb-6 rounded-md border border-black/10 bg-[#f6f7f2] px-4 py-2 text-sm font-bold text-black/60 hover:border-[#2f6f46] hover:text-[#2f6f46]"
             >
-              Back to dashboard
+              Back to overview
             </button>
             <SectionHeader
               icon={Smartphone}
@@ -1849,7 +1930,7 @@ function MobileAppPrototype({
                     >
                       {volunteers.map((volunteer) => (
                         <option key={volunteer.volunteer_id} value={volunteer.volunteer_id}>
-                          {volunteer.volunteer_name}
+                          {getVolunteerDisplayName(volunteer.volunteer_name)}
                         </option>
                       ))}
                     </select>
@@ -1986,7 +2067,7 @@ function MobileAppPrototype({
                     .filter((volunteer) => volunteer.organization_id === selectedPartnerId)
                     .map((volunteer) => (
                       <div key={volunteer.volunteer_id} className="rounded-lg bg-white p-4">
-                        <p className="text-sm font-bold">{volunteer.volunteer_name}</p>
+                        <p className="text-sm font-bold">{getVolunteerDisplayName(volunteer.volunteer_name)}</p>
                         <p className="text-xs text-black/45">Verified volunteer</p>
                       </div>
                     ))}
@@ -2003,7 +2084,7 @@ function MobileAppPrototype({
                               <div>
                                 <p className="text-sm font-bold">{item?.item_name ?? "Inventory batch"}</p>
                                 <p className="text-xs text-black/50">{restaurant?.business_name ?? "Restaurant"}</p>
-                                <p className="text-xs text-black/50">Collected by {volunteer?.volunteer_name ?? "Volunteer"}</p>
+                                <p className="text-xs text-black/50">Collected by {getVolunteerDisplayName(volunteer?.volunteer_name)}</p>
                               </div>
                               <span className={`rounded-md px-2 py-1 text-[10px] font-bold ${
                                 pickup.pickup_status === "Completed" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
