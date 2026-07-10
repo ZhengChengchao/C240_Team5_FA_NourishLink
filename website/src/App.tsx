@@ -689,14 +689,22 @@ export default function App() {
       </section>
 
       <section id="surplus" className="mx-auto grid max-w-7xl items-start gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[0.92fr_1.08fr] lg:px-8">
-        <RestaurantSurplusForm
-          formData={formData}
-          submitState={submitState}
-          submitMessage={submitMessage}
-          restaurants={restaurantRecords}
-          onChange={handleInputChange}
-          onSubmit={handleSurplusSubmit}
-        />
+        <div className="space-y-4">
+          <SectionHeader
+            icon={Building2}
+            eyebrow="Restaurant dashboard"
+            title="Submit end-of-day surplus"
+            detail="This payload is shaped for your n8n add-surplus webhook and daily_inventory table."
+          />
+          <RestaurantSurplusForm
+            formData={formData}
+            submitState={submitState}
+            submitMessage={submitMessage}
+            restaurants={restaurantRecords}
+            onChange={handleInputChange}
+            onSubmit={handleSurplusSubmit}
+          />
+        </div>
 
         <div className="space-y-4">
           <SectionHeader
@@ -753,7 +761,19 @@ export default function App() {
 
       <section id="map" className="border-y border-black/10 bg-white">
         <div className="mx-auto grid max-w-7xl items-start gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
-          <MapPanel googleMapsConfigured={Boolean(GOOGLE_MAPS_KEY)} inventory={inventory} restaurants={restaurantRecords} />
+          <div className="space-y-4">
+            <SectionHeader
+              icon={Map}
+              eyebrow="Map handoff"
+              title="Surplus map handoff"
+              detail={
+                GOOGLE_MAPS_KEY
+                  ? "Google Maps is connected. Restaurant pins are generated from address and postal code."
+                  : "Demo map shown until Google Maps API key is added."
+              }
+            />
+            <MapPanel googleMapsConfigured={Boolean(GOOGLE_MAPS_KEY)} inventory={inventory} restaurants={restaurantRecords} />
+          </div>
 
           <div className="space-y-4">
             <SectionHeader
@@ -881,7 +901,7 @@ function SectionHeader({
   detail: string;
 }) {
   return (
-    <div>
+    <div className="min-h-[104px]">
       <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#2f6f46]">
         <Icon size={16} />
         {eyebrow}
@@ -917,14 +937,7 @@ function RestaurantSurplusForm({
 
   return (
     <form onSubmit={onSubmit} className="rounded-lg border border-black/10 bg-white p-5 shadow-sm">
-      <SectionHeader
-        icon={Building2}
-        eyebrow="Restaurant dashboard"
-        title="Submit end-of-day surplus"
-        detail="This payload is shaped for your n8n add-surplus webhook and daily_inventory table."
-      />
-
-      <div className="mt-6 grid gap-4">
+      <div className="grid gap-4">
         <label className="space-y-2">
           <span className="text-xs font-bold uppercase tracking-widest text-black/45">Restaurant</span>
           <select
@@ -1199,16 +1212,7 @@ function MapPanel({
 
   return (
     <div className="h-[548px] overflow-hidden rounded-lg border border-black/10 bg-[#17211c] text-white">
-      <div className="flex h-[78px] items-center justify-between border-b border-white/10 px-5 py-4">
-        <div>
-          <p className="font-display text-lg font-bold">Surplus map handoff</p>
-          <p className="text-xs text-white/50">
-            {mapMessage}
-          </p>
-        </div>
-        <Map className="text-[#f2c14e]" />
-      </div>
-      <div className="relative h-[470px] bg-[#20372b]">
+      <div className="relative h-full bg-[#20372b]">
         {googleMapsConfigured ? (
           <>
             <div ref={mapRef} className="absolute inset-0" />
