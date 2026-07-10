@@ -898,6 +898,8 @@ export default function App() {
       </section>
 
       <TelegramDispatcherSection />
+
+      <SiteFooter />
         </>
       )}
     </main>
@@ -1383,6 +1385,54 @@ function EmptyState({ title, detail }: { title: string; detail: string }) {
       <p className="font-display font-bold">{title}</p>
       <p className="mt-1 text-sm text-black/45">{detail}</p>
     </div>
+  );
+}
+
+function SiteFooter() {
+  return (
+    <footer className="border-t border-black/10 bg-[#17211c] text-white">
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 md:grid-cols-[1.1fr_0.9fr] lg:px-8">
+        <div className="flex items-start gap-4">
+          <img
+            src="/nourishlink-mark.png"
+            alt=""
+            className="h-14 w-14 shrink-0 rounded-lg bg-white object-contain p-1"
+            aria-hidden="true"
+          />
+          <div>
+            <p className="font-display text-xl font-bold leading-tight">
+              <span className="text-[#78c46a]">Nourish</span><span className="text-[#f2c14e]">Link</span>
+            </p>
+            <p className="mt-1 text-xs font-bold uppercase tracking-widest text-white/45">
+              B2B Food Rescue Logistics
+            </p>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-white/60">
+              A C240 AI Essentials and Innovations final assessment prototype for surplus food rescue, volunteer
+              dispatch, and SDG 2 Zero Hunger impact tracking.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 text-sm text-white/60 sm:grid-cols-2 md:text-right">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-white/40">Project</p>
+            <div className="mt-3 grid gap-2">
+              <a href="#surplus" className="hover:text-[#f2c14e]">Surplus dashboard</a>
+              <a href="#map" className="hover:text-[#f2c14e]">Map handoff</a>
+              <a href="#workflow" className="hover:text-[#f2c14e]">AI workflow</a>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-white/40">Notice</p>
+            <p className="mt-3 leading-6">
+              © 2026 NourishLink Team 5.<br /> 
+              Project demo only.<br /> 
+              All rights reserved.
+            </p>
+          </div>
+        </div>
+      </div>
+    </footer>
   );
 }
 
