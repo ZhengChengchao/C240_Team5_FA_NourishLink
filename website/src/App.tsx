@@ -752,7 +752,7 @@ export default function App() {
       </section>
 
       <section id="map" className="border-y border-black/10 bg-white">
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
+        <div className="mx-auto grid max-w-7xl items-start gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
           <MapPanel googleMapsConfigured={Boolean(GOOGLE_MAPS_KEY)} inventory={inventory} restaurants={restaurantRecords} />
 
           <div className="space-y-4">
@@ -780,7 +780,7 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <div className="grid gap-4">
+            <div className="grid max-h-[548px] gap-4 overflow-y-auto pr-2 [scrollbar-gutter:stable]">
               {pickups
                 .filter((pickup) => pickup.volunteer_id === activeVolunteerId)
                 .map((pickup) => (
@@ -1198,8 +1198,8 @@ function MapPanel({
   }, [googleMapsConfigured, inventory]);
 
   return (
-    <div className="overflow-hidden rounded-lg border border-black/10 bg-[#17211c] text-white">
-      <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+    <div className="h-[548px] overflow-hidden rounded-lg border border-black/10 bg-[#17211c] text-white">
+      <div className="flex h-[78px] items-center justify-between border-b border-white/10 px-5 py-4">
         <div>
           <p className="font-display text-lg font-bold">Surplus map handoff</p>
           <p className="text-xs text-white/50">
@@ -1208,7 +1208,7 @@ function MapPanel({
         </div>
         <Map className="text-[#f2c14e]" />
       </div>
-      <div className="relative min-h-[420px] bg-[#20372b]">
+      <div className="relative h-[470px] bg-[#20372b]">
         {googleMapsConfigured ? (
           <>
             <div ref={mapRef} className="absolute inset-0" />
@@ -1282,8 +1282,8 @@ function PickupCard({
   const isCompleted = pickup.pickup_status === "Completed";
 
   return (
-    <article className="rounded-lg border border-black/10 bg-[#f6f7f2] p-5">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <article className="min-h-[164px] rounded-lg border border-black/10 bg-[#f6f7f2] p-5">
+      <div className="flex h-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-md bg-black/8 px-2 py-1 text-xs font-bold">Pickup #{pickup.pickup_id}</span>
