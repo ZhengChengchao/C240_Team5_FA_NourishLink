@@ -9,6 +9,7 @@ import {
   ExternalLink,
   FileCheck2,
   Map,
+  Menu,
   MapPin,
   Navigation,
   PackageCheck,
@@ -21,6 +22,7 @@ import {
   Store,
   Truck,
   Users,
+  X,
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "./lib/supabase.ts";
 
@@ -260,6 +262,7 @@ export default function App() {
   const [databaseMessage, setDatabaseMessage] = useState(
     isSupabaseConfigured ? "Connecting to Supabase..." : "Demo mode active. Add Supabase env variables to sync live data."
   );
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [surplusSearch, setSurplusSearch] = useState("");
   const [formData, setFormData] = useState({
     restaurant_id: "1",
@@ -273,6 +276,7 @@ export default function App() {
     const path = mode === "app" ? "/app" : "/";
     window.history.pushState({}, "", path);
     setPageMode(mode);
+    setIsMobileMenuOpen(false);
   };
 
   useEffect(() => {
@@ -593,37 +597,74 @@ export default function App() {
   return (
     <main className="min-h-screen bg-[#f6f7f2] text-[#17211c]">
       <header className="border-b border-black/10 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <img
-              src="/nourishlink-mark.png"
-              alt=""
-              className="h-12 w-12 rounded-lg object-contain"
-              aria-hidden="true"
-            />
-            <div>
-              <p className="font-display text-lg font-bold leading-tight">
-                <span className="text-[#246b35]">Nourish</span><span className="text-[#d4a51f]">Link</span>
-              </p>
-              <p className="text-xs font-bold uppercase tracking-widest text-black/45">B2B Food Rescue Logistics</p>
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <img
+                src="/nourishlink-mark.png"
+                alt=""
+                className="h-12 w-12 shrink-0 rounded-lg object-contain"
+                aria-hidden="true"
+              />
+              <div className="min-w-0">
+                <p className="font-display text-lg font-bold leading-tight">
+                  <span className="text-[#246b35]">Nourish</span><span className="text-[#d4a51f]">Link</span>
+                </p>
+                <p className="text-xs font-bold uppercase tracking-widest text-black/45">B2B Food Rescue Logistics</p>
+              </div>
             </div>
+            <nav className="hidden items-center gap-6 text-sm font-bold text-black/60 md:flex">
+              <button type="button" onClick={() => navigateTo("home")} className="hover:text-[#2f6f46]">
+                Dashboard
+              </button>
+              <button type="button" onClick={() => navigateTo("app")} className="hover:text-[#2f6f46]">
+                App Demo
+              </button>
+              {pageMode === "home" && (
+                <>
+                  <a href="#surplus" className="hover:text-[#2f6f46]">Surplus</a>
+                  <a href="#map" className="hover:text-[#2f6f46]">Map</a>
+                  <a href="#workflow" className="hover:text-[#2f6f46]">AI Workflow</a>
+                  <a href="#dispatcher" className="hover:text-[#2f6f46]">Telegram</a>
+                </>
+              )}
+            </nav>
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen((current) => !current)}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-black/10 bg-[#f6f7f2] text-[#17211c] md:hidden"
+              aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+              aria-expanded={isMobileMenuOpen}
+            >
+              {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
           </div>
-          <nav className="hidden items-center gap-6 text-sm font-bold text-black/60 md:flex">
-            <button type="button" onClick={() => navigateTo("home")} className="hover:text-[#2f6f46]">
-              Dashboard
-            </button>
-            <button type="button" onClick={() => navigateTo("app")} className="hover:text-[#2f6f46]">
-              App Demo
-            </button>
-            {pageMode === "home" && (
-              <>
-                <a href="#surplus" className="hover:text-[#2f6f46]">Surplus</a>
-                <a href="#map" className="hover:text-[#2f6f46]">Map</a>
-                <a href="#workflow" className="hover:text-[#2f6f46]">AI Workflow</a>
-                <a href="#dispatcher" className="hover:text-[#2f6f46]">Telegram</a>
-              </>
-            )}
-          </nav>
+          {isMobileMenuOpen && (
+            <nav className="mt-4 grid gap-2 border-t border-black/10 pt-4 text-sm font-bold text-black/60 md:hidden">
+              <button
+                type="button"
+                onClick={() => navigateTo("home")}
+                className="rounded-md bg-[#f6f7f2] px-4 py-3 text-left hover:text-[#2f6f46]"
+              >
+                Dashboard
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateTo("app")}
+                className="rounded-md bg-[#f6f7f2] px-4 py-3 text-left hover:text-[#2f6f46]"
+              >
+                App Demo
+              </button>
+              {pageMode === "home" && (
+                <>
+                  <a onClick={() => setIsMobileMenuOpen(false)} href="#surplus" className="rounded-md bg-[#f6f7f2] px-4 py-3 hover:text-[#2f6f46]">Surplus</a>
+                  <a onClick={() => setIsMobileMenuOpen(false)} href="#map" className="rounded-md bg-[#f6f7f2] px-4 py-3 hover:text-[#2f6f46]">Map</a>
+                  <a onClick={() => setIsMobileMenuOpen(false)} href="#workflow" className="rounded-md bg-[#f6f7f2] px-4 py-3 hover:text-[#2f6f46]">AI Workflow</a>
+                  <a onClick={() => setIsMobileMenuOpen(false)} href="#dispatcher" className="rounded-md bg-[#f6f7f2] px-4 py-3 hover:text-[#2f6f46]">Telegram</a>
+                </>
+              )}
+            </nav>
+          )}
         </div>
       </header>
 
