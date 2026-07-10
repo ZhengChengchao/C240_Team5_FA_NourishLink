@@ -1347,7 +1347,7 @@ function PickupCard({
           <h3 className="mt-3 text-xl font-semibold tracking-normal">{item?.item_name ?? "Inventory batch"}</h3>
           <p className="mt-1 text-sm text-black/55">{restaurant.business_name}</p>
           <p className="mt-1 text-sm text-black/55">
-            {volunteer?.volunteer_name ?? "Volunteer"}{partnerOrganization ? ` · ${partnerOrganization.organization_name}` : ""}
+            {volunteer?.volunteer_name ?? "Volunteer"}{partnerOrganization ? ` - ${partnerOrganization.organization_name}` : ""}
           </p>
           <p className="mt-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-black/40">
             <Clock3 size={14} />
@@ -1375,6 +1375,15 @@ function WorkflowStep({ icon: Icon, title, detail }: { icon: React.ElementType; 
       </div>
       <h3 className="font-display text-base font-bold">{title}</h3>
       <p className="mt-2 text-sm leading-6 text-black/55">{detail}</p>
+    </div>
+  );
+}
+
+function MobileStatTile({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="rounded-md bg-[#f6f7f2] p-3">
+      <p className="font-display text-xl font-bold">{value}</p>
+      <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-black/40">{label}</p>
     </div>
   );
 }
@@ -1551,8 +1560,23 @@ function MobileAppPrototype({
     const item = inventory.find((record) => record.inventory_id === pickup.inventory_id);
     return total + (item?.surplus_quantity ?? 0);
   }, 0);
+  const selectedRestaurantId = Number(formData.restaurant_id);
+  const selectedRestaurant = findRestaurant(restaurants, selectedRestaurantId);
+  const restaurantInventory = inventory.filter((item) => item.restaurant_id === selectedRestaurantId);
+  const restaurantClaimedInventoryIds = new Set(
+    restaurantInventory.filter((item) => item.status === "Claimed").map((item) => item.inventory_id)
+  );
+  const restaurantCompletedPickups = pickups.filter(
+    (pickup) => restaurantClaimedInventoryIds.has(pickup.inventory_id) && pickup.pickup_status === "Completed"
+  );
+  const restaurantSurplusUnits = restaurantInventory.reduce((total, item) => total + item.surplus_quantity, 0);
   const surplus = Math.max(Number(formData.units_produced) - Number(formData.units_sold), 0);
   const mobilePickups = pickups.filter((pickup) => pickup.volunteer_id === activeVolunteerId);
+  const mobileCompletedPickups = mobilePickups.filter((pickup) => pickup.pickup_status === "Completed");
+  const mobileClaimedUnits = mobilePickups.reduce((total, pickup) => {
+    const item = inventory.find((record) => record.inventory_id === pickup.inventory_id);
+    return total + (item?.surplus_quantity ?? 0);
+  }, 0);
   const [authMode, setAuthMode] = useState<"sign-in" | "register">("sign-in");
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [demoName, setDemoName] = useState("");
@@ -1681,11 +1705,37 @@ function MobileAppPrototype({
                 </div>
 
             <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-gutter:stable]">
+              <div className="mb-3 rounded-lg bg-white p-4">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-black/40">User profile</p>
+                <p className="mt-1 text-sm font-bold">{demoName}</p>
+                <p className="text-xs text-black/45">{demoEmail}</p>
+                <div className="mt-3 rounded-md bg-[#f6f7f2] px-3 py-2">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-black/35">
+                    {mobileRole === "restaurant" ? "Restaurant" : mobileRole === "volunteer" ? "Volunteer organisation" : "Partner organisation"}
+                  </p>
+                  <p className="mt-1 text-xs font-bold text-[#17211c]">
+                    {mobileRole === "restaurant"
+                      ? selectedRestaurant.business_name
+                      : mobileRole === "volunteer"
+                        ? activeVolunteerOrg?.organization_name ?? "No organisation linked"
+                        : selectedPartner?.organization_name ?? "No partner selected"}
+                  </p>
+                </div>
+              </div>
+
               {mobileRole === "restaurant" && (
                 <form onSubmit={onSubmitSurplus} className="space-y-3">
                   <div className="rounded-lg bg-white p-4">
-                    <p className="text-xs font-bold uppercase tracking-widest text-black/40">Restaurant mode</p>
-                    <p className="mt-1 text-sm text-black/55">Create a surplus batch for volunteer pickup.</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-black/40">Restaurant dashboard</p>
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      <MobileStatTile value={restaurantInventory.length.toString()} label="Batches" />
+                      <MobileStatTile value={restaurantCompletedPickups.length.toString()} label="Receipts" />
+                      <MobileStatTile value={restaurantSurplusUnits.toString()} label="Units" />
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-white p-4">
+                    <p className="text-xs font-bold uppercase tracking-widest text-black/40">Submit surplus</p>
+                    <p className="mt-1 text-sm text-black/55">Create a new surplus batch for volunteer pickup.</p>
                   </div>
                   <label className="block space-y-1">
                     <span className="text-[11px] font-bold uppercase tracking-widest text-black/40">Restaurant</span>
@@ -1745,13 +1795,36 @@ function MobileAppPrototype({
                   >
                     Submit surplus
                   </button>
+                  <div className="rounded-lg bg-white p-4">
+                    <p className="text-xs font-bold uppercase tracking-widest text-black/40">Submitted history</p>
+                    <div className="mt-3 space-y-2">
+                      {restaurantInventory.slice(0, 6).map((item) => (
+                        <div key={item.inventory_id} className="rounded-md border border-black/10 bg-[#f6f7f2] p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-bold">{item.item_name}</p>
+                              <p className="text-xs text-black/45">{item.surplus_quantity} units - {formatDateTime(item.safe_consume_by)}</p>
+                            </div>
+                            <span className={`rounded-md px-2 py-1 text-[10px] font-bold ${
+                              item.status === "Available" ? "bg-[#2f6f46]/10 text-[#2f6f46]" : "bg-blue-100 text-blue-700"
+                            }`}>
+                              {item.status}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                      {restaurantInventory.length === 0 && (
+                        <p className="text-xs text-black/45">No submitted surplus yet.</p>
+                      )}
+                    </div>
+                  </div>
                 </form>
               )}
 
               {mobileRole === "volunteer" && (
                 <div className="space-y-3">
                   <div className="rounded-lg bg-white p-4">
-                    <p className="text-xs font-bold uppercase tracking-widest text-black/40">Volunteer mode</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-black/40">Volunteer dashboard</p>
                     <select
                       value={activeVolunteerId}
                       onChange={(event) => onVolunteerChange(Number(event.target.value))}
@@ -1766,6 +1839,39 @@ function MobileAppPrototype({
                     <p className="mt-2 text-xs text-black/45">
                       {activeVolunteerOrg?.organization_name ?? "No organisation linked"}
                     </p>
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      <MobileStatTile value={mobilePickups.length.toString()} label="Claimed" />
+                      <MobileStatTile value={mobileCompletedPickups.length.toString()} label="Done" />
+                      <MobileStatTile value={mobileClaimedUnits.toString()} label="Units" />
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg bg-white p-4">
+                    <p className="text-xs font-bold uppercase tracking-widest text-black/40">Surplus map handoff</p>
+                    <div className="relative mt-3 h-32 overflow-hidden rounded-md bg-[#d9efe5]">
+                      <div className="absolute inset-0 opacity-45">
+                        <div className="h-full w-full bg-[linear-gradient(90deg,rgba(47,111,70,.18)_1px,transparent_1px),linear-gradient(rgba(47,111,70,.18)_1px,transparent_1px)] bg-[size:28px_28px]" />
+                      </div>
+                      {availableInventory.slice(0, 4).map((item, index) => (
+                        <div
+                          key={item.inventory_id}
+                          className="absolute flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-[#2f6f46] text-[10px] font-bold text-white shadow"
+                          style={{
+                            left: `${16 + index * 19}%`,
+                            top: `${52 - (index % 2) * 24}%`,
+                          }}
+                        >
+                          {item.surplus_quantity}
+                        </div>
+                      ))}
+                      <p className="absolute bottom-3 left-3 rounded-md bg-white/90 px-2 py-1 text-[10px] font-bold text-[#2f6f46] shadow">
+                        {availableInventory.length} nearby batches
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg bg-white p-4">
+                    <p className="text-xs font-bold uppercase tracking-widest text-black/40">Available food</p>
                   </div>
 
                   {availableInventory.slice(0, 5).map((item) => {
@@ -1796,14 +1902,24 @@ function MobileAppPrototype({
                     );
                   })}
 
+                  <div className="rounded-lg bg-white p-4">
+                    <p className="text-xs font-bold uppercase tracking-widest text-black/40">Claim history</p>
+                    <p className="mt-1 text-sm text-black/55">Claimed and completed food pickups.</p>
+                  </div>
+
                   {mobilePickups.map((pickup) => {
                     const item = inventory.find((record) => record.inventory_id === pickup.inventory_id);
+                    const restaurant = item ? findRestaurant(restaurants, item.restaurant_id) : undefined;
                     return (
                       <div key={pickup.pickup_id} className="rounded-lg border border-[#2f6f46]/20 bg-[#2f6f46]/8 p-4">
                         <p className="text-[11px] font-bold uppercase tracking-widest text-[#2f6f46]">
                           My pickup #{pickup.pickup_id}
                         </p>
                         <p className="mt-1 text-sm font-bold">{item?.item_name ?? "Inventory batch"}</p>
+                        <p className="mt-1 text-xs text-black/45">{restaurant?.business_name ?? "Restaurant"} - Assigned {formatDateTime(pickup.assigned_at)}</p>
+                        {pickup.completed_at && (
+                          <p className="mt-1 text-xs text-black/45">Completed {formatDateTime(pickup.completed_at)}</p>
+                        )}
                         <button
                           type="button"
                           onClick={() => void onComplete(pickup.pickup_id)}
@@ -1821,7 +1937,7 @@ function MobileAppPrototype({
               {mobileRole === "partner" && (
                 <div className="space-y-3">
                   <div className="rounded-lg bg-white p-4">
-                    <p className="text-xs font-bold uppercase tracking-widest text-black/40">Partner organisation</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-black/40">Partner dashboard</p>
                     <select
                       value={selectedPartnerId ?? ""}
                       onChange={(event) => setSelectedPartnerId(Number(event.target.value))}
@@ -1857,6 +1973,41 @@ function MobileAppPrototype({
                         <p className="text-xs text-black/45">Verified volunteer</p>
                       </div>
                     ))}
+                  <div className="rounded-lg bg-white p-4">
+                    <p className="text-xs font-bold uppercase tracking-widest text-black/40">Receipt details</p>
+                    <div className="mt-3 space-y-2">
+                      {partnerPickups.map((pickup) => {
+                        const item = inventory.find((record) => record.inventory_id === pickup.inventory_id);
+                        const restaurant = item ? findRestaurant(restaurants, item.restaurant_id) : undefined;
+                        const volunteer = volunteers.find((record) => record.volunteer_id === pickup.volunteer_id);
+                        return (
+                          <div key={pickup.pickup_id} className="rounded-md border border-black/10 bg-[#f6f7f2] p-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="text-sm font-bold">{item?.item_name ?? "Inventory batch"}</p>
+                                <p className="text-xs text-black/50">{restaurant?.business_name ?? "Restaurant"}</p>
+                                <p className="text-xs text-black/50">Collected by {volunteer?.volunteer_name ?? "Volunteer"}</p>
+                              </div>
+                              <span className={`rounded-md px-2 py-1 text-[10px] font-bold ${
+                                pickup.pickup_status === "Completed" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+                              }`}>
+                                {pickup.pickup_status}
+                              </span>
+                            </div>
+                            <p className="mt-2 text-[11px] font-bold uppercase tracking-widest text-black/35">
+                              Assigned {formatDateTime(pickup.assigned_at)}
+                            </p>
+                            <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-black/35">
+                              Completed {pickup.completed_at ? formatDateTime(pickup.completed_at) : "Pending"}
+                            </p>
+                          </div>
+                        );
+                      })}
+                      {partnerPickups.length === 0 && (
+                        <p className="text-xs text-black/45">No receipts for this partner yet.</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
