@@ -800,7 +800,7 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <div className="grid max-h-[548px] gap-4 overflow-y-auto pr-2 [scrollbar-gutter:stable]">
+            <div className="grid max-h-[344px] gap-4 overflow-y-auto pr-2 [scrollbar-gutter:stable]">
               {pickups
                 .filter((pickup) => pickup.volunteer_id === activeVolunteerId)
                 .map((pickup) => (
@@ -1211,7 +1211,7 @@ function MapPanel({
   }, [googleMapsConfigured, inventory]);
 
   return (
-    <div className="h-[548px] overflow-hidden rounded-lg border border-black/10 bg-[#17211c] text-white">
+    <div className="h-[476px] overflow-hidden rounded-lg border border-black/10 bg-[#17211c] text-white">
       <div className="relative h-full bg-[#20372b]">
         {googleMapsConfigured ? (
           <>
