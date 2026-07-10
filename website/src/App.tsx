@@ -1417,16 +1417,16 @@ function SiteFooter() {
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-white/40">Project</p>
             <div className="mt-3 grid gap-2">
-              <a href="#surplus" className="hover:text-[#f2c14e]">Surplus dashboard</a>
-              <a href="#map" className="hover:text-[#f2c14e]">Map handoff</a>
-              <a href="#workflow" className="hover:text-[#f2c14e]">AI workflow</a>
+              <a href="/#surplus" className="hover:text-[#f2c14e]">Surplus dashboard</a>
+              <a href="/#map" className="hover:text-[#f2c14e]">Map handoff</a>
+              <a href="/#workflow" className="hover:text-[#f2c14e]">AI workflow</a>
             </div>
           </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-white/40">Notice</p>
             <p className="mt-3 leading-6">
-              © 2026 NourishLink Team 5.<br /> 
-              Project demo only.<br /> 
+              &copy; 2026 NourishLink Team 5.<br />
+              Project demo only.<br />
               All rights reserved.
             </p>
           </div>
@@ -1443,48 +1443,51 @@ function AppDemoPage({
   onBackToDashboard: () => void;
 }) {
   return (
-    <section className="min-h-[calc(100vh-73px)] bg-white">
-      <div className="mx-auto grid max-w-7xl items-start gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[0.78fr_1.22fr] lg:px-8">
-        <div>
-          <button
-            type="button"
-            onClick={onBackToDashboard}
-            className="mb-6 rounded-md border border-black/10 bg-[#f6f7f2] px-4 py-2 text-sm font-bold text-black/60 hover:border-[#2f6f46] hover:text-[#2f6f46]"
-          >
-            Back to dashboard
-          </button>
-          <SectionHeader
-            icon={Smartphone}
-            eyebrow="Mobile app emulator"
-            title="Role-based app experience"
-            detail="This separate app page demonstrates how restaurants, volunteers, and partner organisations would sign in or register before using NourishLink."
-          />
-          <div className="mt-5 grid gap-3">
-            <WorkflowStep
-              icon={Store}
-              title="Restaurant"
-              detail="Register a restaurant profile, submit surplus, and track claimed inventory."
+    <>
+      <section className="min-h-[calc(100vh-73px)] bg-white">
+        <div className="mx-auto grid max-w-7xl items-start gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[0.78fr_1.22fr] lg:px-8">
+          <div>
+            <button
+              type="button"
+              onClick={onBackToDashboard}
+              className="mb-6 rounded-md border border-black/10 bg-[#f6f7f2] px-4 py-2 text-sm font-bold text-black/60 hover:border-[#2f6f46] hover:text-[#2f6f46]"
+            >
+              Back to dashboard
+            </button>
+            <SectionHeader
+              icon={Smartphone}
+              eyebrow="Mobile app emulator"
+              title="Role-based app experience"
+              detail="This separate app page demonstrates how restaurants, volunteers, and partner organisations would sign in or register before using NourishLink."
             />
-            <WorkflowStep
-              icon={Truck}
-              title="Volunteer"
-              detail="Sign in as a verified volunteer, search food, claim pickups, and complete delivery."
-            />
-            <WorkflowStep
-              icon={Users}
-              title="Partner organisation"
-              detail="View volunteer teams, completed pickups, and rescued food units."
-            />
+            <div className="mt-5 grid gap-3">
+              <WorkflowStep
+                icon={Store}
+                title="Restaurant"
+                detail="Register a restaurant profile, submit surplus, and track claimed inventory."
+              />
+              <WorkflowStep
+                icon={Truck}
+                title="Volunteer"
+                detail="Sign in as a verified volunteer, search food, claim pickups, and complete delivery."
+              />
+              <WorkflowStep
+                icon={Users}
+                title="Partner organisation"
+                detail="View volunteer teams, completed pickups, and rescued food units."
+              />
+            </div>
+            <p className="mt-5 rounded-lg border border-black/10 bg-[#f6f7f2] p-4 text-sm leading-6 text-black/55">
+              This is prototype authentication for demonstration. A production version would use Supabase Auth plus a
+              profiles table linked to restaurants, volunteers, and partner organisations.
+            </p>
           </div>
-          <p className="mt-5 rounded-lg border border-black/10 bg-[#f6f7f2] p-4 text-sm leading-6 text-black/55">
-            This is prototype authentication for demonstration. A production version would use Supabase Auth plus a
-            profiles table linked to restaurants, volunteers, and partner organisations.
-          </p>
-        </div>
 
-        <MobileAppPrototype {...mobileProps} />
-      </div>
-    </section>
+          <MobileAppPrototype {...mobileProps} />
+        </div>
+      </section>
+      <SiteFooter />
+    </>
   );
 }
 
@@ -1566,11 +1569,21 @@ function MobileAppPrototype({
           <div className="flex h-full flex-col overflow-hidden rounded-[1.65rem] bg-[#f6f7f2] p-4 text-[#17211c]">
             <div className="mx-auto mb-3 h-1.5 w-20 shrink-0 rounded-full bg-black/20" />
             <div className="mb-3 flex shrink-0 items-center justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-[#2f6f46]">NourishLink App</p>
-                <h3 className="font-display text-2xl font-bold">{isSignedIn ? `Hi, ${demoName}` : "Welcome"}</h3>
+              <div className="flex min-w-0 items-center gap-2">
+                <img
+                  src="/nourishlink-mark.png"
+                  alt=""
+                  className="h-9 w-9 shrink-0 rounded-md object-contain"
+                  aria-hidden="true"
+                />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-[#2f6f46]">NourishLink App</p>
+                  <h3 className="font-display text-2xl font-bold">{isSignedIn ? `Hi, ${demoName}` : "Welcome"}</h3>
+                </div>
               </div>
-              <Smartphone className="text-[#2f6f46]" size={24} />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[#2f6f46]/30 text-[#2f6f46]">
+                <Smartphone size={19} />
+              </div>
             </div>
 
             {!isSignedIn ? (
