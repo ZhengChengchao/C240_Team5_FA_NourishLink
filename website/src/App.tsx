@@ -2093,7 +2093,7 @@ function TelegramDispatcherSection() {
             icon={ShieldCheck}
             eyebrow="Secure volunteer channel"
             title="How the Telegram bot fits into the project"
-            detail="Denas's FAQ chatbot answers public website questions. This Telegram bot is the authenticated dispatch channel for real pickup operations."
+            detail="The public website can showcase the project, while this Telegram bot acts as the authenticated dispatch channel for real pickup operations."
           />
 
           <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -2104,14 +2104,6 @@ function TelegramDispatcherSection() {
                 <p className="mt-2 text-sm leading-6 text-black/55">{step.detail}</p>
               </div>
             ))}
-          </div>
-
-          <div className="mt-4 rounded-lg border border-black/10 bg-white p-5">
-            <p className="font-display text-base font-bold">Recommended repo evidence</p>
-            <p className="mt-2 text-sm leading-6 text-black/55">
-              Export this n8n workflow and save it as n8n-workflows/telegram-dispatcher.json. Denas can export his FAQ
-              chatbot separately as n8n-workflows/faq-chatbot.json.
-            </p>
           </div>
         </div>
       </div>
