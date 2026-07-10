@@ -1611,78 +1611,95 @@ function MobileAppPrototype({
             </div>
 
             {!isSignedIn ? (
-              <form onSubmit={handleDemoAuth} className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1 [scrollbar-gutter:stable]">
-                <div className="grid grid-cols-2 gap-2 rounded-lg bg-white p-2">
+              <form onSubmit={handleDemoAuth} className="min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-gutter:stable]">
+                <div className="flex min-h-full flex-col justify-center space-y-3 py-6">
+                  <div className="rounded-lg bg-white p-4 text-center">
+                    <img
+                      src="/nourishlink-mark.png"
+                      alt=""
+                      className="mx-auto h-14 w-14 object-contain"
+                      aria-hidden="true"
+                    />
+                    <p className="mt-2 text-xs font-bold uppercase tracking-widest text-[#2f6f46]">NourishLink</p>
+                    <p className="mt-1 text-sm text-black/55">Choose a role to preview each workflow.</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 rounded-lg bg-white p-2">
+                    <button
+                      type="button"
+                      onClick={() => setAuthMode("sign-in")}
+                      className={`rounded-md px-3 py-2 text-xs font-bold ${
+                        authMode === "sign-in" ? "bg-[#2f6f46] text-white" : "text-black/50"
+                      }`}
+                    >
+                      Sign in
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAuthMode("register")}
+                      className={`rounded-md px-3 py-2 text-xs font-bold ${
+                        authMode === "register" ? "bg-[#2f6f46] text-white" : "text-black/50"
+                      }`}
+                    >
+                      Register
+                    </button>
+                  </div>
+
+                  <div className="rounded-lg bg-white p-3">
+                    <p className="text-xs font-bold uppercase tracking-widest text-black/40">
+                      {authMode === "sign-in" ? "Demo sign in" : "Demo registration"}
+                    </p>
+                    <p className="mt-1 text-sm leading-5 text-black/55">
+                      Prototype login. Choose a role to preview each workflow.
+                    </p>
+                  </div>
+
+                  <input
+                    value={demoName}
+                    onChange={(event) => setDemoName(event.target.value)}
+                    placeholder="Name"
+                    className="w-full rounded-md border border-black/10 bg-white px-3 py-3 text-sm font-bold outline-none"
+                  />
+                  <input
+                    value={demoEmail}
+                    onChange={(event) => setDemoEmail(event.target.value)}
+                    placeholder="Email"
+                    type="email"
+                    className="w-full rounded-md border border-black/10 bg-white px-3 py-3 text-sm font-bold outline-none"
+                  />
+
+                  <div className="grid grid-cols-3 gap-2 rounded-lg bg-white p-2">
+                    {[
+                      { role: "restaurant" as MobileRole, label: "Restaurant", icon: Store },
+                      { role: "volunteer" as MobileRole, label: "Volunteer", icon: Truck },
+                      { role: "partner" as MobileRole, label: "Partner", icon: Users },
+                    ].map((item) => (
+                      <button
+                        key={item.role}
+                        type="button"
+                        onClick={() => setMobileRole(item.role)}
+                        className={`rounded-md px-2 py-2 text-[11px] font-bold transition ${
+                          mobileRole === item.role ? "bg-[#2f6f46] text-white" : "text-black/50 hover:bg-[#f6f7f2]"
+                        }`}
+                      >
+                        <item.icon className="mx-auto mb-1" size={16} />
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+
                   <button
-                    type="button"
-                    onClick={() => setAuthMode("sign-in")}
-                    className={`rounded-md px-3 py-2 text-xs font-bold ${
-                      authMode === "sign-in" ? "bg-[#2f6f46] text-white" : "text-black/50"
-                    }`}
+                    type="submit"
+                    disabled={!demoName.trim() || !demoEmail.trim()}
+                    className="w-full rounded-md bg-[#17211c] px-4 py-3 text-sm font-bold text-white disabled:opacity-40"
                   >
-                    Sign in
+                    Continue as {mobileRole === "restaurant" ? "Restaurant" : mobileRole === "volunteer" ? "Volunteer" : "Partner"}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setAuthMode("register")}
-                    className={`rounded-md px-3 py-2 text-xs font-bold ${
-                      authMode === "register" ? "bg-[#2f6f46] text-white" : "text-black/50"
-                    }`}
-                  >
-                    Register
-                  </button>
-                </div>
 
-                <div className="rounded-lg bg-white p-3">
-                  <p className="text-xs font-bold uppercase tracking-widest text-black/40">
-                    {authMode === "sign-in" ? "Demo sign in" : "Demo registration"}
-                  </p>
-                  <p className="mt-1 text-sm leading-5 text-black/55">
-                    Type any demo name and email, then choose a role. No password is stored.
+                  <p className="px-3 text-center text-[11px] leading-5 text-black/40">
+                    Demo only. No password or real account is stored.
                   </p>
                 </div>
-
-                <input
-                  value={demoName}
-                  onChange={(event) => setDemoName(event.target.value)}
-                  placeholder="Name"
-                  className="w-full rounded-md border border-black/10 bg-white px-3 py-3 text-sm font-bold outline-none"
-                />
-                <input
-                  value={demoEmail}
-                  onChange={(event) => setDemoEmail(event.target.value)}
-                  placeholder="Email"
-                  type="email"
-                  className="w-full rounded-md border border-black/10 bg-white px-3 py-3 text-sm font-bold outline-none"
-                />
-
-            <div className="grid grid-cols-3 gap-2 rounded-lg bg-white p-2">
-              {[
-                { role: "restaurant" as MobileRole, label: "Restaurant", icon: Store },
-                { role: "volunteer" as MobileRole, label: "Volunteer", icon: Truck },
-                { role: "partner" as MobileRole, label: "Partner", icon: Users },
-              ].map((item) => (
-                <button
-                  key={item.role}
-                  type="button"
-                  onClick={() => setMobileRole(item.role)}
-                  className={`rounded-md px-2 py-2 text-[11px] font-bold transition ${
-                    mobileRole === item.role ? "bg-[#2f6f46] text-white" : "text-black/50 hover:bg-[#f6f7f2]"
-                  }`}
-                >
-                  <item.icon className="mx-auto mb-1" size={16} />
-                  {item.label}
-                </button>
-              ))}
-            </div>
-
-                <button
-                  type="submit"
-                  disabled={!demoName.trim() || !demoEmail.trim()}
-                  className="w-full rounded-md bg-[#17211c] px-4 py-3 text-sm font-bold text-white disabled:opacity-40"
-                >
-                  Continue as {mobileRole === "restaurant" ? "Restaurant" : mobileRole === "volunteer" ? "Volunteer" : "Partner"}
-                </button>
               </form>
             ) : (
               <>
