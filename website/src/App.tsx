@@ -977,7 +977,7 @@ function RestaurantSurplusForm({
   const surplus = Math.max(Number(formData.units_produced) - Number(formData.units_sold), 0);
 
   return (
-    <form onSubmit={onSubmit} className="rounded-lg border border-black/10 bg-white p-5 shadow-sm">
+    <form onSubmit={onSubmit} className="rounded-lg border border-black/10 bg-white p-5 shadow-sm lg:min-h-[650px]">
       <div className="grid gap-4">
         <label className="space-y-2">
           <span className="text-xs font-bold uppercase tracking-widest text-black/45">Restaurant</span>
@@ -1057,19 +1057,21 @@ function RestaurantSurplusForm({
         Submit surplus
       </button>
 
-      {submitMessage && (
+      <div className="mt-3 min-h-[64px]">
         <p
-          className={`mt-3 rounded-md px-3 py-2 text-sm ${
-            submitState === "error"
-              ? "bg-red-50 text-red-700"
-              : submitState === "success"
-                ? "bg-green-50 text-green-700"
-                : "bg-black/5 text-black/55"
+          className={`rounded-md px-3 py-2 text-sm leading-5 transition ${
+            submitMessage
+              ? submitState === "error"
+                ? "bg-red-50 text-red-700"
+                : submitState === "success"
+                  ? "bg-green-50 text-green-700"
+                  : "bg-black/5 text-black/55"
+              : "invisible bg-transparent text-transparent"
           }`}
         >
-          {submitMessage}
+          {submitMessage || "Message reserved"}
         </p>
-      )}
+      </div>
     </form>
   );
 }
