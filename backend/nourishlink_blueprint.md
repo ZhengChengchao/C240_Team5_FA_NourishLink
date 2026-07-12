@@ -18,7 +18,7 @@ Core workflow:
 4. Partner organisations provide accountability and receipt evidence.
 5. The website showcases the system and includes an admin-style operations dashboard.
 6. The mobile app emulator demonstrates how restaurant, volunteer, and partner roles would work on a phone.
-7. n8n/Telegram can provide a secure volunteer dispatch channel.
+7. n8n/Telegram provides evidence for a secure volunteer dispatch channel.
 8. Botpress provides the public FAQ chatbot widget.
 
 ## 2. Current System Architecture
@@ -270,7 +270,8 @@ VITE_N8N_ADD_SURPLUS_WEBHOOK
 Webhook purpose:
 
 - Allows a restaurant dashboard submission to be sent into n8n.
-- n8n can then insert or process the surplus record.
+- n8n inserts the surplus record into Supabase/Postgres `daily_inventory`.
+- The workflow evidence is stored in `n8n-workflows/README.md` and `n8n-workflows/screenshots/ingestion-webhook.png`.
 
 Expected payload:
 
@@ -287,11 +288,19 @@ Expected payload:
 
 Current frontend can also write directly to Supabase when configured.
 
+Recommended final export file:
+
+```text
+n8n-workflows/nourishlink-ingestion-webhook.json
+```
+
+Do not create fake workflow JSON. Export the real workflow from n8n and inspect it for secrets before committing.
+
 ## 8. Telegram AI Dispatcher Workflow
 
 Telegram/n8n is the secure volunteer dispatch channel.
 
-Recommended workflow:
+Implemented evidence workflow:
 
 ```text
 Telegram Trigger
@@ -302,6 +311,24 @@ Telegram Trigger
           -> Send Telegram Message
       -> false: Access Denied Telegram Message
 ```
+
+Current evidence files:
+
+```text
+n8n-workflows/README.md
+n8n-workflows/screenshots/telegram-dispatcher.png
+```
+
+Recommended final export file:
+
+```text
+n8n-workflows/nourishlink-telegram-dispatcher.json
+```
+
+Contribution boundary:
+
+- Zheng Chengchao worked on the n8n ingestion webhook and Telegram dispatcher workflow evidence.
+- Denas Ho worked on the Botpress public FAQ chatbot.
 
 ### Verify Driver Query
 
@@ -540,5 +567,5 @@ Recommended next improvements:
 2. Test production Vercel deployment with Supabase env vars.
 3. Confirm Botpress widget on production URL.
 4. Confirm Google Maps key referrer restriction.
-5. Export n8n workflows into `n8n-workflows/` for FA evidence.
+5. Export real n8n workflow JSON files into `n8n-workflows/` for stronger FA evidence after checking that no secrets are included.
 6. Take final screenshots for presentation/report.

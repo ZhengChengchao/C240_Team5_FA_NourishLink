@@ -47,6 +47,10 @@ FA/
 |   +-- DEMO_DATA_README.md
 +-- n8n-workflows/
 |   +-- .gitkeep
+|   +-- README.md
+|   +-- screenshots/
+|       +-- ingestion-webhook.png
+|       +-- telegram-dispatcher.png
 +-- website/
 |   +-- public/
 |   |   +-- nourishlink-logo.png
@@ -242,23 +246,47 @@ Frontend behavior:
 
 ## n8n And Telegram
 
-Telegram dispatcher section exists on the dashboard.
+The `n8n-workflows/` folder now contains evidence notes and screenshots for the two n8n workflows used in the project story.
 
 Purpose:
 
-- Website opens the Telegram bot.
-- n8n keeps secrets outside the frontend.
-- Telegram bot handles secure volunteer dispatch.
+- The ingestion webhook receives restaurant surplus submissions and inserts rows into `daily_inventory`.
+- The Telegram dispatcher verifies volunteers by `telegram_chat_id` before allowing AI-assisted pickup operations.
+- n8n keeps the Telegram bot token, Postgres credentials, and AI API keys outside the frontend.
+- The website opens the Telegram bot and explains the secure dispatcher flow.
 
-Environment variable:
+Environment variables:
 
 ```text
 VITE_TELEGRAM_BOT_URL
+VITE_N8N_ADD_SURPLUS_WEBHOOK
 ```
 
-Never put the Telegram bot token in the frontend.
+Current evidence files:
+
+```text
+n8n-workflows/README.md
+n8n-workflows/screenshots/ingestion-webhook.png
+n8n-workflows/screenshots/telegram-dispatcher.png
+```
+
+Recommended final export files:
+
+```text
+n8n-workflows/nourishlink-ingestion-webhook.json
+n8n-workflows/nourishlink-telegram-dispatcher.json
+```
+
+Do not create fake workflow JSON files. Export the real workflows from n8n when ready, inspect them for secret values, and then add the sanitized exports to this folder.
+
+Never put the Telegram bot token, Postgres URI/password, Supabase service role key, or private AI API keys in the frontend or GitHub.
 
 The earlier Denas name/reference was removed from the Telegram section.
+
+Contribution note:
+
+- Zheng Chengchao worked on the n8n restaurant ingestion webhook and Telegram dispatcher workflow evidence.
+- Denas Ho worked on the Botpress public FAQ chatbot.
 
 ## Botpress Chatbot
 
@@ -347,7 +375,7 @@ VITE_GOOGLE_MAPS_API_KEY
 Notes:
 
 - `VITE_N8N_CHATBOT_WEBHOOK` may be unused now because Botpress replaced the old frontend chatbot.
-- Keep `VITE_N8N_ADD_SURPLUS_WEBHOOK` only if n8n surplus submission is still needed.
+- Keep `VITE_N8N_ADD_SURPLUS_WEBHOOK` when demonstrating the n8n restaurant ingestion webhook.
 - In Vercel, choose `Production and Preview` for env variables.
 - The Vercel “secret/hide value” lock is okay, but remember all `VITE_` frontend values are still visible in the browser bundle.
 
@@ -471,7 +499,7 @@ Good next tasks:
 3. Test actual Vercel deployment with Supabase env vars.
 4. Confirm Botpress widget appears correctly on production.
 5. Confirm Google Maps key restrictions after deployment.
-6. Export n8n workflows into `n8n-workflows/` if needed for FA evidence.
+6. Export real n8n workflow JSON files into `n8n-workflows/` after checking that no secrets are included.
 7. Take final screenshots for presentation/report.
 
 ## Prompt For Future Codex Thread

@@ -1,0 +1,167 @@
+{
+  "name": "C240 FA NourishLink Ingestion Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "add-surplus",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "7d5760a3-f6ac-4934-a709-52d210e45a3c",
+      "name": "Webhook",
+      "webhookId": "07603a8e-d8b5-4a5e-bacc-69bd326779f3"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list",
+          "cachedResultName": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "daily_inventory",
+          "mode": "list",
+          "cachedResultName": "daily_inventory"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "restaurant_id": "={{ $json.body.restaurant_id }}",
+            "units_produced": "={{ $json.body.units_produced }}",
+            "units_sold": "={{ $json.body.units_sold }}",
+            "surplus_quantity": "={{ $json.body.surplus_quantity }}",
+            "item_name": "={{ $json.body.item_name }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "inventory_id",
+              "displayName": "inventory_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "restaurant_id",
+              "displayName": "restaurant_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "item_name",
+              "displayName": "item_name",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "units_produced",
+              "displayName": "units_produced",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "units_sold",
+              "displayName": "units_sold",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "surplus_quantity",
+              "displayName": "surplus_quantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "safe_consume_by",
+              "displayName": "safe_consume_by",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "6c5905de-994a-41e9-bf9c-a0f9dc6dc81d",
+      "name": "Insert rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "deYeCJrNx2Ibk4ZW",
+          "name": "C240_FA_Supabase"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "1f87bd46-6bb7-4210-af95-73501377664e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d4ebadb9d95df0efff4e8784a1811953a63bd62f8d7a2a45b7c8f23992108d48"
+  },
+  "nodeGroups": [],
+  "id": "Ovt0izJGpek6enV8",
+  "tags": []
+}
