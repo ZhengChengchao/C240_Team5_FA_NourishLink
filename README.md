@@ -251,8 +251,8 @@ The `n8n-workflows/` folder now contains evidence notes and screenshots for the 
 Purpose:
 
 - The ingestion webhook receives restaurant surplus submissions and inserts rows into `daily_inventory`.
-- The Telegram dispatcher verifies volunteers by `telegram_chat_id` before allowing AI-assisted pickup operations.
-- n8n keeps the Telegram bot token, Postgres credentials, and AI API keys outside the frontend.
+- The Telegram dispatcher verifies volunteers by `telegram_chat_id` before allowing pickup operations.
+- n8n keeps the Telegram bot token, Postgres credentials, and private service keys outside the frontend.
 - The website opens the Telegram bot and explains the secure dispatcher flow.
 
 Environment variables:
@@ -279,7 +279,7 @@ n8n-workflows/nourishlink-telegram-dispatcher.json
 
 Do not create fake workflow JSON files. Export the real workflows from n8n when ready, inspect them for secret values, and then add the sanitized exports to this folder.
 
-Never put the Telegram bot token, Postgres URI/password, Supabase service role key, or private AI API keys in the frontend or GitHub.
+Never put the Telegram bot token, Postgres URI/password, Supabase service role key, or private service keys in the frontend or GitHub.
 
 The earlier Denas name/reference was removed from the Telegram section.
 
@@ -384,7 +384,7 @@ Never expose:
 - Supabase service role key
 - Postgres URI/password
 - Telegram bot token
-- OpenRouter/Gemini private API keys
+- Private service API keys
 
 ## Local Run
 
@@ -447,7 +447,7 @@ Vercel should redeploy automatically after push.
   - completed receipts
   - rescued units
   - operational accountability
-- MCP is backend/AI-tool evidence, not the live website backend.
+- MCP is backend tool-integration evidence, not the live website backend.
 
 ## MCP Meaning
 
@@ -459,7 +459,7 @@ backend/nourishlink_mcp.py
 
 Meaning:
 
-MCP is a controlled AI tool interface. It can expose safe actions such as checking surplus, dispatching drivers, and completing pickups. It is not the frontend backend, but it is useful as FA evidence for AI-assisted operations.
+MCP is a controlled tool interface. It can expose safe actions such as checking surplus, dispatching drivers, and completing pickups. It is not the frontend backend, but it is useful as FA evidence for controlled backend operations.
 
 ## Demo Seed Data
 
@@ -501,24 +501,3 @@ Good next tasks:
 5. Confirm Google Maps key restrictions after deployment.
 6. Export real n8n workflow JSON files into `n8n-workflows/` after checking that no secrets are included.
 7. Take final screenshots for presentation/report.
-
-## Prompt For Future Codex Thread
-
-Use this prompt if opening a new Codex project/thread:
-
-```text
-We are working on NourishLink, a C240 AI Essentials and Innovations final assessment project. Please read README.md first and treat it as project memory. The active project root is:
-
-D:\RP\AY 2026 Sem1\C240 AI Essentials and Innovations\FA
-
-The deploy-ready frontend is in:
-
-D:\RP\AY 2026 Sem1\C240 AI Essentials and Innovations\FA\website
-
-Main file:
-website/src/App.tsx
-
-The project is a React/Vite website with Supabase integration, Google Maps, Botpress FAQ widget, Telegram/n8n dispatcher section, and a mobile app emulator at /app.
-
-Before changing anything, inspect the current files and preserve existing layout/design decisions. Use npm run lint and npm run build after changes.
-```

@@ -55,8 +55,8 @@ Purpose:
 
 - Provides a secure volunteer dispatch channel through Telegram.
 - Verifies the Telegram sender against the `volunteers.telegram_chat_id` field.
-- Allows only registered volunteers to access AI-assisted pickup operations.
-- Uses an AI agent and SQL tool to query available surplus, support claim decisions, and reply through Telegram.
+- Allows only registered volunteers to access pickup operations.
+- Uses the workflow agent and SQL tool to query available surplus, support claim decisions, and reply through Telegram.
 
 Flow:
 
@@ -64,9 +64,9 @@ Flow:
 Telegram Trigger
   -> Verify Driver (Postgres query)
   -> If
-      -> true: AI Agent
+      -> true: Workflow Agent
           -> OpenRouter Chat Model
-          -> Simple Memory
+          -> Conversation state node
           -> Postgres SQL Tool
           -> Send Telegram Message
       -> false: Access Denied Telegram Message
@@ -122,8 +122,7 @@ Do not commit:
 - Postgres database URI
 - Postgres password
 - Supabase service role key
-- OpenRouter API key
-- Gemini API key
+- Private model/API keys
 - Any private webhook token
 
 It is normally acceptable for exported n8n JSON to contain credential names or credential IDs, but not the actual secret values. If unsure, remove the credential object values before committing.

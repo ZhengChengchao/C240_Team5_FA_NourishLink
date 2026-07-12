@@ -4,7 +4,7 @@ Last updated: 10 July 2026
 
 Project focus: Autonomous B2B Food Rescue Logistics for UN SDG 2 Zero Hunger.
 
-This blueprint documents the current NourishLink product architecture, database design, AI/n8n workflow, website, mobile app emulator, and integration boundaries. It should be read together with the root `README.md`, which records project progress and handoff memory.
+This blueprint documents the current NourishLink product architecture, database design, n8n workflow, website, mobile app emulator, and integration boundaries. It should be read together with the root `README.md`, which records project progress and handoff notes.
 
 ## 1. Product Concept
 
@@ -559,7 +559,7 @@ Current completed work:
 - Google Maps panel exists and works when the key is configured.
 - Responsive burger navigation exists for mobile.
 - Branded footer exists on dashboard and app demo pages.
-- README has been updated as project memory.
+- README has been updated as project handoff notes.
 
 Recommended next improvements:
 

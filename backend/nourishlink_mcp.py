@@ -8,7 +8,7 @@ from datetime import datetime
 mcp = FastMCP("NourishLink Core Backend")
 
 # Replace this with your actual Supabase connection string (URI)
-DB_URI = "postgresql://postgres.[your-project-id]:[YOUR-PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require"
+DB_URI = "postgresql://postgres.omwnojxumowsgnypmwxo:we5XxoEsVWC5zF2V@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require"
 
 def get_db_connection():
     return psycopg2.connect(DB_URI, cursor_factory=RealDictCursor)
